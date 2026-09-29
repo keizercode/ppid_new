@@ -1,0 +1,368 @@
+@model DashboardVm
+@{
+    <partial name="Partials/_FormStyles" />
+    <partial name="Partials/_ActionMenu" />
+    ViewData["Title"] = "Dashboard Kasubkel KDI";
+    ViewData["Role"]  = "Kasubkel KDI";
+    Layout = "_LayoutAdmin";
+
+    int pctProses  = Model.Total > 0 ? (int)Math.Round(Model.Proses  * 100.0 / Model.Total) : 0;
+    int pctSelesai = Model.Total > 0 ? (int)Math.Round(Model.Selesai * 100.0 / Model.Total) : 0;
+
+    var disposisiAktif = ViewData["DisposisiAktif"] as List<PermohonanPPID> ?? new();
+    var subTaskMap     = ViewData["SubTaskMap"] as Dictionary<Guid, List<SubTaskPPID>> ?? new();
+
+    var baru       = disposisiAktif.Where(p => p.StatusPPIDID == StatusId.Didisposisi).ToList();
+    var diProses   = disposisiAktif.Where(p => p.StatusPPIDID == StatusId.DiProses
+                                             || p.StatusPPIDID == StatusId.ObservasiDijadwalkan
+                                             || p.StatusPPIDID == StatusId.ObservasiSelesai
+                                             || p.StatusPPIDID == StatusId.WawancaraDijadwalkan
+                                             || p.StatusPPIDID == StatusId.WawancaraSelesai).ToList();
+    var dataSiap   = disposisiAktif.Where(p => p.StatusPPIDID == StatusId.DataSiap).ToList();
+    var feedback   = disposisiAktif.Where(p => p.StatusPPIDID == StatusId.FeedbackPemohon).ToList();
+
+    /* ── Status helpers ── */
+    string StCls(int? s) => (s ?? 0) switch {
+        StatusId.Selesai              => "st st--selesai",
+        StatusId.DataSiap             => "st st--siap",
+        StatusId.FeedbackPemohon      => "st st--feedback",
+        StatusId.MenungguVerifikasi   => "st st--verif",
+        StatusId.Dibatalkan           => "st st--batal",
+        StatusId.TerdaftarSistem      => "st st--daftar",
+        StatusId.IdentifikasiAwal     => "st st--daftar",
+        StatusId.Didisposisi          => "st st--dispos",
+        StatusId.ObservasiDijadwalkan => "st st--obs",
+        StatusId.ObservasiSelesai     => "st st--obs",
+        StatusId.WawancaraDijadwalkan => "st st--waw",
+        StatusId.WawancaraSelesai     => "st st--waw",
+        StatusId.MenungguSuratIzin    => "st st--surat",
+        _                             => "st st--proses"
+    };
+    string StDot(int? s) => (s ?? 0) switch {
+        StatusId.Selesai              => "#059669",
+        StatusId.DataSiap             => "#10b981",
+        StatusId.FeedbackPemohon      => "#0ea5e9",
+        StatusId.MenungguVerifikasi   => "#8b5cf6",
+        StatusId.Dibatalkan           => "#ef4444",
+        StatusId.TerdaftarSistem      => "#9ca3af",
+        StatusId.IdentifikasiAwal     => "#9ca3af",
+        StatusId.Didisposisi          => "#06b6d4",
+        StatusId.ObservasiDijadwalkan => "#f97316",
+        StatusId.ObservasiSelesai     => "#f97316",
+        StatusId.WawancaraDijadwalkan => "#7c3aed",
+        StatusId.WawancaraSelesai     => "#7c3aed",
+        StatusId.MenungguSuratIzin    => "#3b82f6",
+        _                             => "#f59e0b"
+    };
+}
+
+@* ══ ALERT 1 ══ *@
+@if (baru.Any())
+{
+    <div class="bg-cyan-50 border border-cyan-300 rounded-2xl p-4 mb-4 flex items-start gap-3">
+        <div class="w-8 h-8 bg-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span class="text-white text-sm">📥</span>
+        </div>
+        <div class="flex-1">
+            <p class="font-bold text-cyan-800 text-sm">@baru.Count disposisi baru menunggu diterima</p>
+            <p class="text-cyan-600 text-xs mt-0.5">Setelah diterima, sub-tugas paralel akan dibuat secara otomatis.</p>
+            <div class="flex flex-wrap gap-2 mt-2">
+                @foreach (var p in baru.Take(4))
+                {
+                    <a href="/kasubkel-kdi/terima/@p.PermohonanPPIDID"
+                       class="inline-flex items-center gap-1.5 text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg transition-colors">
+                        📥 @p.NoPermohonan
+                    </a>
+                }
+                @if (baru.Count > 4)
+                {
+                    <a href="/kasubkel-kdi/permintaan-data?status=6"
+                       class="text-xs font-semibold text-cyan-600 hover:underline self-center">
+                        + @(baru.Count - 4) lainnya →
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ══ ALERT 2 ══ *@
+@if (dataSiap.Any())
+{
+    <div class="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 mb-4">
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-white text-sm">📦</span>
+            </div>
+            <div class="flex-1">
+                <p class="font-bold text-emerald-800 text-sm">@dataSiap.Count permohonan siap — minta feedback pemohon</p>
+                <p class="text-emerald-600 text-xs mt-0.5 leading-relaxed">
+                    Semua sub-tugas selesai. Tombol feedback sudah aktif di portal pemohon secara otomatis.
+                    <strong>Loket Kepegawaian</strong> yang mengelola dan memantau hasil feedback pemohon.
+                </p>
+                <div class="flex flex-wrap gap-2 mt-2.5">
+                    @foreach (var p in dataSiap.Take(3))
+                    {
+                        <a href="/kasubkel-kdi/subtasks/@p.PermohonanPPIDID"
+                        class="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-colors">
+                        📦 @p.NoPermohonan
+                        </a>
+                    }
+                    @if (dataSiap.Count > 3)
+                    {
+                        <a href="/kasubkel-kdi/permintaan-data?status=10"
+                           class="text-xs font-semibold text-emerald-700 hover:underline self-center">
+                            + @(dataSiap.Count - 3) lainnya →
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ══ ALERT 3 ══ *@
+@if (feedback.Any())
+{
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-4 flex items-start gap-3">
+        <span class="text-amber-500 text-lg mt-0.5 flex-shrink-0">⏳</span>
+        <div class="flex-1">
+            <p class="font-bold text-amber-800 text-sm">@feedback.Count permohonan menunggu kuesioner pemohon</p>
+            <p class="text-amber-600 text-xs mt-0.5">
+                Jika pemohon tidak merespons, gunakan "Tandai Selesai (Manual)" di halaman sub-tugas.
+            </p>
+            <div class="flex flex-wrap gap-2 mt-2">
+                @foreach (var p in feedback.Take(4))
+                {
+                    <a href="/kasubkel-kdi/subtasks/@p.PermohonanPPIDID"
+                       class="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors">
+                        ⏳ @p.NoPermohonan
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ══ STAT CARDS ══ -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="rounded-2xl p-5 relative overflow-hidden shadow-md min-h-[110px] flex flex-col justify-between" style="background:#0f1f4a">
+        <p class="text-[10px] font-bold uppercase tracking-[.15em] text-blue-300/70 mb-1">Total Permohonan Data</p>
+        <p class="text-5xl font-black text-white leading-none">@Model.Total</p>
+        <div class="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-400 to-transparent"></div>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <p class="text-[10px] font-bold uppercase tracking-[.15em] text-gray-400 mb-1">Proses</p>
+        <p class="text-4xl font-black text-amber-600 leading-none mb-2">@Model.Proses</p>
+        <div class="w-full bg-amber-50 rounded-full h-1.5"><div class="bg-amber-400 h-full rounded-full" style="width:@pctProses%"></div></div>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <p class="text-[10px] font-bold uppercase tracking-[.15em] text-gray-400 mb-1">Selesai</p>
+        <p class="text-4xl font-black text-emerald-600 leading-none mb-2">@Model.Selesai</p>
+        <div class="w-full bg-emerald-50 rounded-full h-1.5"><div class="bg-emerald-500 h-full rounded-full" style="width:@pctSelesai%"></div></div>
+    </div>
+</div>
+
+<!-- ══ CHARTS ══ -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Total Permohonan per Bulan</p>
+        <div style="height:180px"><canvas id="chartTotal"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Proses & Selesai per Bulan</p>
+        <div style="height:180px"><canvas id="chartStatus"></canvas></div>
+    </div>
+</div>
+
+<!-- ══ ANTRIAN DISPOSISI ══ -->
+@if (disposisiAktif.Any())
+{
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+            <div>
+                <p class="font-bold text-gray-700 text-sm">Antrian Aktif</p>
+                <p class="text-xs text-gray-400 mt-0.5">Disposisi yang perlu diterima atau sedang dalam proses</p>
+            </div>
+            <div class="flex items-center gap-2">
+                @if (baru.Any())     { <span class="bg-cyan-100 text-cyan-700 text-xs font-bold px-2.5 py-1 rounded-full">@baru.Count baru</span> }
+                @if (diProses.Any()) { <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">@diProses.Count diproses</span> }
+                @if (dataSiap.Any()) { <span class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">@dataSiap.Count siap</span> }
+                @if (feedback.Any()) { <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">@feedback.Count menunggu feedback</span> }
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-50">
+                        <th class="col-th">No Permohonan</th>
+                        <th class="col-th">Pemohon</th>
+                        <th class="col-th">Keperluan</th>
+                        <th class="col-th">Batas Waktu</th>
+                        <th class="col-th">Status</th>
+                        <th class="col-th">Progress Sub-Tugas</th>
+                        <th class="col-th">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @foreach (var p in disposisiAktif)
+                    {
+                        bool isNew      = p.StatusPPIDID == StatusId.Didisposisi;
+                        bool isFeedback = p.StatusPPIDID == StatusId.FeedbackPemohon;
+                        bool isDataSiap = p.StatusPPIDID == StatusId.DataSiap;
+                        bool isSelesai = p.StatusPPIDID == StatusId.Selesai;
+
+                        subTaskMap.TryGetValue(p.PermohonanPPIDID, out var tasks);
+                        int done  = tasks?.Count(t => t.StatusTask == SubTaskStatus.Selesai) ?? 0;
+                        int total = tasks?.Count ?? 0;
+
+                        string rowBg = isNew ? "bg-cyan-50/60" : isDataSiap ? "bg-emerald-50/40" : "";
+
+                        <tr class="hover:bg-blue-50/20 transition-colors group @rowBg">
+
+                            @* {{!-- ── No. Permohonan ── --}} *@
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="no-perm">@p.NoPermohonan</span>
+                                    @if (isNew)      { <span class="text-[10px] bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded font-bold">BARU</span> }
+                                    @if (isDataSiap) { <span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">SIAP</span> }
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-gray-800 text-sm">@p.Pribadi?.Nama</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">@p.KategoriPemohon</p>
+                            </td>
+
+                            @* {{!-- ── Keperluan ── --}} *@
+                            <td class="px-4 py-3">
+                                <div class="flex flex-wrap gap-1">
+                                    @if (p.IsPermintaanData) { <span class="badge bg-blue-50 text-blue-700 border-blue-100">Data</span> }
+                                    @if (p.IsObservasi)      { <span class="badge bg-orange-50 text-orange-700 border-orange-100">Obs</span> }
+                                    @if (p.IsWawancara)      { <span class="badge bg-violet-50 text-violet-700 border-violet-100">Waw</span> }
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-3 text-xs @(p.IsOverdue ? "text-red-600 font-semibold" : "text-gray-500")">
+                                @(p.BatasWaktu?.ToString("dd MMM yyyy") ?? "—")
+                                @if (p.IsOverdue) { <span class="block text-[10px] text-red-400">⚠ Terlambat @Math.Abs(p.HariSisa??0) hari</span> }
+                                else if (p.HariSisa.HasValue && p.HariSisa <= 3) { <span class="block text-[10px] text-amber-500">Sisa @p.HariSisa hari</span> }
+                            </td>
+
+                            @* {{!-- ── Status ── --}} *@
+                            <td class="px-4 py-3">
+                                <span class="@StCls(p.StatusPPIDID)">
+                                    <span class="st-dot" style="background:@StDot(p.StatusPPIDID)"></span>
+                                    @p.Status?.NamaStatusPPID
+                                </span>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                @if (isNew)
+                                {
+                                    <span class="text-[11px] text-gray-400 italic">Belum diterima</span>
+                                }
+                                else if (total > 0)
+                                {
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="@(done==total?"bg-emerald-500":"bg-blue-500") h-full rounded-full"
+                                                 style="width:@(total > 0 ? done*100/total : 0)%"></div>
+                                        </div>
+                                        <span class="text-[11px] font-semibold @(done==total?"text-emerald-600":"text-gray-500")">@done/@total</span>
+                                    </div>
+                                }
+                                else if (isDataSiap || isFeedback)
+                                {
+                                    <span class="text-[11px] text-emerald-600 font-semibold">✓ Semua selesai</span>
+                                }
+                            </td>
+
+
+                            <td class="px-4 py-3">
+                                <div class="action-cell">
+                                @if (isNew)
+                                {
+                                    <a href="/kasubkel-kdi/terima/@p.PermohonanPPIDID"
+                                       class="btn-action-primary cyan">📥 Terima</a>
+                                }
+                                else
+                                {
+                                    <a href="/kasubkel-kdi/subtasks/@p.PermohonanPPIDID"
+                                       class="btn-action-primary">Lihat Sub-tugas</a>
+                                }
+                                <div class="action-more-wrap">
+                                    <button class="btn-action-more" onclick="toggleActionMenu(this)" type="button">⋯</button>
+                                    <div class="action-dropdown hidden">
+                                        <a href="/kasubkel-kdi/detail/@p.PermohonanPPIDID" class="action-dd-item">📋 Detail & Log</a>
+
+                                        @if (isNew)
+                                        {
+                                            <a href="/kasubkel-kdi/detail/@p.PermohonanPPIDID" class="action-dd-item">📋 Detail</a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Quick Links -->
+<div class="flex gap-3 flex-wrap">
+    <a href="/kasubkel-kdi/permintaan-data"
+       class="inline-flex items-center gap-2 bg-[#002d7a] hover:bg-blue-900 text-white text-sm font-bold px-5 py-3 rounded-xl shadow-sm transition-colors">
+        📊 Lihat Semua Permintaan Data →
+    </a>
+    @if (baru.Any())
+    {
+        <a href="/kasubkel-kdi/permintaan-data?status=6"
+           class="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-bold px-5 py-3 rounded-xl shadow-sm transition-colors">
+            📥 @baru.Count Disposisi Baru →
+        </a>
+    }
+    @if (dataSiap.Any())
+    {
+        <a href="/kasubkel-kdi/permintaan-data?status=10"
+           class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-xl shadow-sm transition-colors">
+            📦 @dataSiap.Count Data Siap →
+        </a>
+    }
+</div>
+
+<style>
+    .col-th { padding:12px 16px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em }
+    /* ── No. Permohonan ── */
+    .no-perm{font-family:'JetBrains Mono','Fira Code',ui-monospace,monospace;font-size:11.5px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px;padding:3px 8px;white-space:nowrap;letter-spacing:.01em;display:inline-block}
+    /* ── Status Badge ── */
+    .st{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;border-radius:20px;padding:3px 9px;white-space:nowrap;border:1px solid;line-height:1.4}
+    .st-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .st--selesai{color:#065f46;background:#ecfdf5;border-color:#a7f3d0}
+    .st--siap{color:#047857;background:#f0fdf4;border-color:#bbf7d0}
+    .st--feedback{color:#0369a1;background:#f0f9ff;border-color:#bae6fd}
+    .st--verif{color:#5b21b6;background:#f5f3ff;border-color:#ddd6fe}
+    .st--batal{color:#9f1239;background:#fff1f2;border-color:#fecdd3}
+    .st--daftar{color:#374151;background:#f9fafb;border-color:#e5e7eb}
+    .st--proses{color:#92400e;background:#fffbeb;border-color:#fde68a}
+    .st--dispos{color:#164e63;background:#ecfeff;border-color:#a5f3fc}
+    .st--obs{color:#7c2d12;background:#fff7ed;border-color:#fed7aa}
+    .st--waw{color:#5b21b6;background:#f5f3ff;border-color:#ddd6fe}
+    .st--surat{color:#1e40af;background:#eff6ff;border-color:#bfdbfe}
+    /* ── Keperluan Badge ── */
+    .badge{font-size:10px;padding:1px 6px;border-radius:999px;font-weight:600;border:1px solid}
+</style>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const labels=@Html.Raw(Model.LabelsJson), totals=@Html.Raw(Model.TotalJson), proses=@Html.Raw(Model.ProsesJson), selesai=@Html.Raw(Model.SelesaiJson);
+const o={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9ca3af',font:{size:11},boxWidth:12}}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#9ca3af',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#9ca3af',font:{size:10},stepSize:1},beginAtZero:true}}};
+new Chart(document.getElementById('chartTotal'),{type:'bar',data:{labels,datasets:[{label:'Total',data:totals,backgroundColor:'rgba(59,130,246,.7)',borderRadius:6}]},options:o});
+new Chart(document.getElementById('chartStatus'),{type:'line',data:{labels,datasets:[{label:'Proses',data:proses,borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.12)',fill:true,tension:.4,pointRadius:4},{label:'Selesai',data:selesai,borderColor:'#10B981',backgroundColor:'rgba(16,185,129,.12)',fill:true,tension:.4,pointRadius:4}]},options:o});
+</script>
+}

@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Admin PPID</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="icon" type="image/png" href="~/images/jaya-raya.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+    <script>
+        (function () {
+            const t = localStorage.getItem('ppid-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <style>
+        :root,[data-theme="light"] {
+            --bg-body:#F0F2F5;--bg-sidebar:#fff;--border-sidebar:#E5E7EB;
+            --bg-topbar:#fff;--border-topbar:#E5E7EB;
+            --nav-text:#6B7280;--nav-text-hover:#111827;--nav-text-active:#1D4ED8;
+            --nav-bg-hover:#F3F4F6;--nav-bg-active:#EFF6FF;--nav-accent:#3B82F6;
+            --nav-icon-bg:#F9FAFB;--nav-icon-border:#E5E7EB;
+            --nav-icon-bg-hover:#F3F4F6;--nav-icon-bd-hover:#D1D5DB;
+            --nav-icon-bg-active:#DBEAFE;--nav-icon-bd-active:#BFDBFE;
+            --nav-icon-color:#9CA3AF;--nav-icon-hover:#374151;--nav-icon-active:#2563EB;
+            --nav-label:#9CA3AF;--nav-divider:#E5E7EB;
+            --brand-sub:#9CA3AF;--brand-title:#1F2937;
+            --user-bg:#F9FAFB;--user-sub:#9CA3AF;--user-title:#1B3B6F;
+            --user-avatar-bg:#DBEAFE;--user-avatar-bd:#BFDBFE;--user-avatar-ic:#3B82F6;
+            --logout-text:#9CA3AF;
+            --topbar-title:#1F2937;--topbar-sub:#9CA3AF;
+            --pill-bg:#F8F9FB;--pill-border:#E5E7EB;--pill-text:#6B7280;
+            --footer-bg:#fff;--footer-border:#F3F4F6;--footer-text:#9CA3AF;--footer-ver:#D1D5DB;
+            --toggle-bg:#F3F4F6;--toggle-border:#E5E7EB;--toggle-icon:#6B7280;--toggle-hover:#E5E7EB;
+        }
+        [data-theme="dark"] {
+            --bg-body:#0D1117;--bg-sidebar:#0c1a3a;--border-sidebar:rgba(255,255,255,.06);
+            --bg-topbar:#111827;--border-topbar:rgba(255,255,255,.07);
+            --nav-text:rgba(255,255,255,.40);--nav-text-hover:rgba(255,255,255,.85);--nav-text-active:#93c5fd;
+            --nav-bg-hover:rgba(255,255,255,.07);--nav-bg-active:rgba(59,130,246,.18);--nav-accent:#3B82F6;
+            --nav-icon-bg:rgba(255,255,255,.05);--nav-icon-border:rgba(255,255,255,.07);
+            --nav-icon-bg-hover:rgba(255,255,255,.09);--nav-icon-bd-hover:rgba(255,255,255,.12);
+            --nav-icon-bg-active:rgba(59,130,246,.25);--nav-icon-bd-active:rgba(59,130,246,.35);
+            --nav-icon-color:rgba(255,255,255,.35);--nav-icon-hover:rgba(255,255,255,.70);--nav-icon-active:#93c5fd;
+            --nav-label:rgba(255,255,255,.20);--nav-divider:rgba(255,255,255,.06);
+            --brand-sub:rgba(255,255,255,.25);--brand-title:rgba(255,255,255,.90);
+            --user-bg:rgba(255,255,255,.03);--user-sub:rgba(255,255,255,.25);--user-title:rgba(255,255,255,.70);
+            --user-avatar-bg:rgba(59,130,246,.20);--user-avatar-bd:rgba(59,130,246,.30);--user-avatar-ic:#93c5fd;
+            --logout-text:rgba(255,255,255,.22);
+            --topbar-title:rgba(255,255,255,.90);--topbar-sub:rgba(255,255,255,.35);
+            --pill-bg:rgba(255,255,255,.05);--pill-border:rgba(255,255,255,.08);--pill-text:rgba(255,255,255,.40);
+            --footer-bg:#111827;--footer-border:rgba(255,255,255,.05);
+            --footer-text:rgba(255,255,255,.25);--footer-ver:rgba(255,255,255,.12);
+            --toggle-bg:rgba(255,255,255,.06);--toggle-border:rgba(255,255,255,.10);
+            --toggle-icon:rgba(255,255,255,.45);--toggle-hover:rgba(255,255,255,.10);
+        }
+        * { font-family:'Plus Jakarta Sans',sans-serif; }
+        body { background-color:var(--bg-body); transition:background-color .25s ease; }
+        .sidebar { background:var(--bg-sidebar); border-right:1px solid var(--border-sidebar); }
+
+        .nav-item { display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--nav-text);transition:all .12s;text-decoration:none;position:relative; }
+        .nav-item:hover { background:var(--nav-bg-hover);color:var(--nav-text-hover); }
+        .nav-item.active { background:var(--nav-bg-active);color:var(--nav-text-active);font-weight:600; }
+        .nav-item.active::before { content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;border-radius:0 3px 3px 0;background:var(--nav-accent); }
+        .nav-icon { width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--nav-icon-bg);border:1px solid var(--nav-icon-border);transition:all .12s; }
+        .nav-item:hover .nav-icon { background:var(--nav-icon-bg-hover);border-color:var(--nav-icon-bd-hover); }
+        .nav-item.active .nav-icon { background:var(--nav-icon-bg-active);border-color:var(--nav-icon-bd-active); }
+        .nav-icon svg { color:var(--nav-icon-color);transition:color .12s; }
+        .nav-item:hover .nav-icon svg { color:var(--nav-icon-hover); }
+        .nav-item.active .nav-icon svg { color:var(--nav-icon-active); }
+        .nav-group-label { font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:var(--nav-label);padding:16px 10px 5px;font-weight:700; }
+
+        .topbar { background:var(--bg-topbar);border-bottom:1px solid var(--border-topbar); }
+        .topbar-pill { display:inline-flex;align-items:center;gap:6px;background:var(--pill-bg);border:1px solid var(--pill-border);border-radius:8px;padding:5px 12px;font-size:11.5px;font-weight:500;color:var(--pill-text); }
+
+        .theme-toggle { width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--toggle-bg);border:1px solid var(--toggle-border);color:var(--toggle-icon);cursor:pointer;transition:all .15s;flex-shrink:0; }
+        .theme-toggle:hover { background:var(--toggle-hover); }
+        [data-theme="light"] .icon-moon { display:block; } [data-theme="light"] .icon-sun { display:none; }
+        [data-theme="dark"]  .icon-moon { display:none; } [data-theme="dark"]  .icon-sun { display:block; }
+
+        .alert-slide { animation:alertSlide .25s ease both; }
+        @@keyframes alertSlide { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Notification Bell ── */
+        .notif-bell-btn {
+            position: relative;
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--toggle-bg);
+            border: 1px solid var(--toggle-border);
+            color: var(--toggle-icon);
+            cursor: pointer;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+        .notif-bell-btn:hover { background: var(--toggle-hover); }
+        .notif-bell-btn.has-unread { background: #EFF6FF; border-color: #BFDBFE; color: #2563EB; }
+        [data-theme="dark"] .notif-bell-btn.has-unread { background: rgba(59,130,246,.2); border-color: rgba(59,130,246,.35); color: #93c5fd; }
+
+        .notif-badge {
+            position: absolute;
+            top: -4px; right: -4px;
+            min-width: 16px; height: 16px;
+            padding: 0 4px;
+            border-radius: 99px;
+            background: #EF4444;
+            color: white;
+            font-size: 9px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--bg-topbar);
+            animation: badgePop .25s ease both;
+        }
+        @@keyframes badgePop { from{transform:scale(0)} to{transform:scale(1)} }
+
+        /* ── Notification Popup ── */
+        #notif-popup {
+            position: fixed;
+            top: 60px; right: 20px;
+            width:min(380px, calc(100vw - 24px));
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.14), 0 4px 12px rgba(0,0,0,.06);
+            z-index: 9999;
+            overflow: hidden;
+            transform-origin: top right;
+            animation: popupOpen .18s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        [data-theme="dark"] #notif-popup {
+            background: #1E2A3E;
+            border-color: rgba(255,255,255,.08);
+            box-shadow: 0 20px 60px rgba(0,0,0,.5);
+        }
+        @@keyframes popupOpen {
+            from { opacity:0; transform:scale(.92) translateY(-8px); }
+            to   { opacity:1; transform:scale(1)   translateY(0);    }
+        }
+        #notif-popup.closing {
+            animation: popupClose .15s ease both;
+        }
+        @@keyframes popupClose {
+            from { opacity:1; transform:scale(1)   translateY(0);    }
+            to   { opacity:0; transform:scale(.95) translateY(-6px); }
+        }
+
+        .notif-popup-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #F3F4F6;
+            transition: background .1s;
+            cursor: default;
+        }
+        [data-theme="dark"] .notif-popup-item { border-color: rgba(255,255,255,.05); }
+        .notif-popup-item:last-child { border-bottom: none; }
+        .notif-popup-item:hover { background: #F9FAFB; }
+        [data-theme="dark"] .notif-popup-item:hover { background: rgba(255,255,255,.04); }
+        .notif-popup-item.unread { background: #FAFCFF; }
+        [data-theme="dark"] .notif-popup-item.unread { background: rgba(59,130,246,.06); }
+
+        .notif-popup-icon {
+            width: 34px; height: 34px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .notif-popup-icon.danger  { background: #FEF2F2; }
+        .notif-popup-icon.warning { background: #FFFBEB; }
+
+        /* ── Backdrop overlay ── */
+        #notif-backdrop {
+            position: fixed; inset: 0; z-index: 9998;
+        }
+
+        /* ── Responsive: sidebar off-canvas below lg breakpoint ── */
+        .sidebar {
+            transform: translateX(-100%);
+            transition: transform .22s ease;
+        }
+        .sidebar.sidebar-open { transform: translateX(0); }
+        @@media (min-width: 1024px) {
+            .sidebar { transform: translateX(0) !important; }
+        }
+
+        #sidebar-backdrop {
+            position: fixed; inset: 0; z-index: 29;
+            background: rgba(0,0,0,.45);
+        }
+
+        .mobile-menu-btn {
+            width: 34px; height: 34px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--toggle-bg); border: 1px solid var(--toggle-border);
+            color: var(--toggle-icon); cursor: pointer; flex-shrink: 0;
+        }
+        @@media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
+
+        /* ── Responsive: notification popup near-full-width on small screens ── */
+        @@media (max-width: 480px) {
+            #notif-popup { left: 12px; right: 12px; top: 60px; width: auto; }
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased">
+<div class="flex min-h-screen">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside id="app-sidebar" class="sidebar w-[85vw] max-w-72 sm:w-64 lg:w-60 sm:w-64 lg:w-60 fixed top-0 left-0 h-full z-30 flex flex-col">
+
+        <!-- Brand -->
+        <div class="px-4 py-4" style="border-bottom:1px solid var(--border-sidebar)">
+            <div class="flex items-center gap-3">
+                <div class="rounded-xl flex items-center justify-center flex-shrink-0 px-1 py-1">
+                    <img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1778220475/Logo_PPID_opsi_2_n485vz.png"
+                         alt="Logo PPID Jakarta"  class="h-14 w-auto object-contain"
+                         id="sb-logo"
+                         onerror="this.style.display='none';document.getElementById('sb-fallback').style.display='inline'" />
+                    <span id="sb-fallback" class="text-white font-black text-[10px] tracking-widest" style="display:none">PPID</span>
+                </div>
+                <div>
+                    <p style="color:var(--brand-sub)" class="text-[9px] uppercase tracking-widest leading-none font-semibold">PPID DLH Jakarta</p>
+                    <p style="color:var(--brand-title)" class="font-bold text-[13px] leading-tight mt-0.5">Admin Panel</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- User + Logout -->
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border-sidebar);background:var(--user-bg)">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                         style="background:var(--user-avatar-bg);border:1px solid var(--user-avatar-bd)">
+                        <svg class="w-3 h-3" style="color:var(--user-avatar-ic)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <p style="color:var(--user-sub)" class="text-[9px] font-medium leading-none">Masuk sebagai</p>
+                        <p style="color:var(--user-title)" class="text-[11px] font-semibold mt-0.5 truncate">@ViewData["Role"]</p>
+                    </div>
+                </div>
+                <form id="logout-form" asp-action="Logout" asp-controller="Auth" method="post" class="flex-shrink-0">
+                <button type="button" title="Keluar" onclick="showLogoutModal()"
+                class="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg border border-transparent hover:bg-red-50 hover:border-red-100 hover:text-red-500 transition-colors"
+                style="color:var(--logout-text)">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Keluar
+                </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ── Navigation ── -->
+        @{
+            var path     = Context.Request.Path.Value ?? "";
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+
+            bool isLoket      = userRole is AppRoles.Loket or AppRoles.Admin;
+            bool isLoketUmum  = userRole is AppRoles.LoketUmum or AppRoles.Admin;
+            bool isKasubKepeg = userRole is AppRoles.KasubkelKepegawaian or AppRoles.Admin;
+            bool isKasubKdi   = userRole is AppRoles.KasubkelKDI or AppRoles.Admin;
+        }
+
+        <nav class="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
+
+            @* ── LOKET KEPEGAWAIAN ── *@
+            @if (isLoket)
+            {
+                <p class="nav-group-label">Loket Kepegawaian</p>
+                @NavItem("/petugas-loket", path, "Dashboard",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'/>")
+                @NavItem("/petugas-loket/identifikasi", path, "Permohonan Baru",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M12 4v16m8-8H4'/>")
+                @NavItem("/petugas-loket/permintaan-data", path, "Permintaan Data",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M4 19h16V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14z'/>")
+                @NavItem("/petugas-loket/wawancara", path, "Wawancara",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z'/>")
+                @NavItem("/petugas-loket/observasi", path, "Observasi",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'/><path stroke-linecap='round' stroke-linejoin='round' d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'/>")
+                @NavItem("/petugas-loket/rekap-bulanan", path, "Rekap Bulanan",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/>")
+                @NavItem("/petugas-loket/data", path, "Menu Data",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4'/>")
+            }
+
+            @* ── LOKET UMUM ── *@
+            @if (isLoketUmum)
+            {
+                <p class="nav-group-label">Loket Umum</p>
+                @NavItem("/loket-umum", path, "Dashboard",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'/>")
+                @NavItem("/loket-umum/daftar", path, "Permohonan Baru (LSM)",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M12 4v16m8-8H4'/>")
+                @NavItem("/loket-umum/permintaan-data", path, "Permintaan Data",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M4 19h16V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14z'/>")
+                @NavItem("/loket-umum/wawancara", path, "Wawancara",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z'/>")
+                @NavItem("/loket-umum/observasi", path, "Observasi",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'/><path stroke-linecap='round' stroke-linejoin='round' d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'/>")
+                @NavItem("/loket-umum/rekap-bulanan", path, "Rekap Bulanan",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/>")
+                @NavItem("/loket-umum/data", path, "Menu Data",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4'/>")
+            }
+
+            @* ── KASUBKEL KEPEGAWAIAN ── *@
+            @if (isKasubKepeg)
+            {
+                <p class="nav-group-label">Kasubkel Kepegawaian</p>
+                @NavItem("/kasubkel-kepegawaian", path, "Dashboard",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M4 6h16M4 10h16M4 14h16M4 18h16'/>")
+                @NavItem("/kasubkel-kepegawaian/permohonan", path, "Daftar Permohonan",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586l5.414 5.414V19a2 2 0 01-2 2z'/>",
+                    exact: false)
+                @NavItem("/kasubkel-kepegawaian/rekap-bulanan", path, "Rekap Bulanan",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/>")
+            }
+
+            @* ── KASUBKEL KDI ── *@
+            @if (isKasubKdi)
+            {
+                <p class="nav-group-label">Kasubkel KDI</p>
+                @NavItem("/kasubkel-kdi", path, "Dashboard",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M4 19h16M6 17V9M12 17V5M18 17v-7'/>")
+                @NavItem("/kasubkel-kdi/permintaan-data", path, "Permintaan Data",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M4 19h16V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14z'/>",
+                    exact: false)
+                @NavItem("/kasubkel-kdi/rekap-bulanan", path, "Rekap Bulanan",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/>")
+            }
+
+            <!-- Divider + link publik -->
+            <div class="mt-4 pt-3" style="border-top:1px solid var(--nav-divider)">
+                @NavItem("/", path, "Halaman Publik",
+                    "<path stroke-linecap='round' stroke-linejoin='round' d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'/>")
+            </div>
+        </nav>
+
+        <!-- Footer sidebar -->
+        <div class="px-4 py-3 flex items-center justify-between" style="border-top:1px solid var(--border-sidebar)">
+            <span style="color:var(--footer-ver)" class="text-[10px] font-medium">PPID DLH Jakarta</span>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Ganti tema">
+                <svg class="icon-moon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+                <svg class="icon-sun w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ══ CONTENT ══ -->
+    <div class="lg:ml-60 flex-1 flex flex-col min-w-0 w-full" style="background:var(--bg-body)">
+
+        <!-- Topbar -->
+        <header class="topbar sticky top-0 z-20">
+            <div class="px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button type="button" class="mobile-menu-btn" onclick="openSidebar()" title="Menu" aria-label="Buka menu">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <h1 class="text-[13px] sm:text-[14px] font-bold leading-none truncate" style="color:var(--topbar-title)">
+                        @ViewData["Title"]
+                    </h1>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+
+                    @* ── Notification Bell (only when NotifApiUrl is set by controller) ── *@
+                    @if (ViewData["NotifApiUrl"] != null)
+                    {
+                        <div class="relative" id="notif-bell-wrap">
+                            <button id="notif-bell-btn"
+                                    class="notif-bell-btn"
+                                    onclick="toggleNotifPopup()"
+                                    title="Notifikasi">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                </svg>
+                                <span id="notif-badge" class="notif-badge hidden">0</span>
+                            </button>
+                        </div>
+                    }
+
+                    <span class="topbar-pill hidden sm:inline-flex">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        @ViewData["Role"]
+                    </span>
+                    <span class="topbar-pill hidden md:inline-flex">
+                        <svg class="w-3 h-3" style="color:var(--pill-text)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        @DateTime.Now.ToString("dd MMM yyyy")
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert-slide mx-3 sm:mx-5 mt-4 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-2.5">
+                <div class="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <p class="text-emerald-800 text-sm font-medium">@Html.Raw(TempData["Success"])</p>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert-slide mx-3 sm:mx-5 mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2.5">
+                <div class="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </div>
+                <p class="text-red-800 text-sm font-medium">@Html.Raw(TempData["Error"])</p>
+            </div>
+        }
+
+        <main class="flex-1 p-3 sm:p-5">@RenderBody()</main>
+
+        <footer class="px-3 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-1 text-center" style="background:var(--footer-bg);border-top:1px solid var(--footer-border)">
+            <p class="text-[11px]" style="color:var(--footer-text)">&copy; @DateTime.Now.Year Dinas Lingkungan Hidup DKI Jakarta</p>
+            <p class="text-[11px]" style="color:var(--footer-ver)">PPID Admin</p>
+        </footer>
+    </div>
+
+    <!-- Mobile sidebar backdrop -->
+    <div id="sidebar-backdrop" class="hidden" onclick="closeSidebar()"></div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════════════
+   NOTIFICATION POPUP
+   Dirender jika NotifApiUrl tersedia (diset oleh controller via ViewData).
+   ══════════════════════════════════════════════════════════════════════════ *@
+@if (ViewData["NotifApiUrl"] != null)
+{
+    var notifApiUrl  = ViewData["NotifApiUrl"]  as string;
+    var notifPageUrl = ViewData["NotifPageUrl"] as string ?? "#";
+
+    <!-- Backdrop (close on outside click) -->
+    <div id="notif-backdrop" class="hidden" onclick="closeNotifPopup()"></div>
+
+    <!-- Popup -->
+    <div id="notif-popup" class="hidden">
+
+        @* ── Header ── *@
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100"
+             style="border-color:var(--border-topbar)">
+            <div class="flex items-center gap-2">
+                <span class="text-base">🔔</span>
+                <p class="text-[13px] font-bold" style="color:var(--topbar-title)">Notifikasi</p>
+                <span id="popup-unread-badge"
+                      class="hidden text-[10px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded-full">
+                    0
+                </span>
+            </div>
+            <button onclick="popupMarkAllRead()"
+                    class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-blue-50 transition-all">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                Tandai Semua Dibaca
+            </button>
+        </div>
+
+        @* ── Items list ── *@
+        <div id="popup-list" style="max-height:340px;overflow-y:auto">
+            <div id="popup-skeleton" class="p-4 space-y-3">
+                @for (int i = 0; i < 3; i++)
+                {
+                    <div class="flex gap-3 animate-pulse">
+                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-2.5 bg-gray-100 rounded w-2/5"></div>
+                            <div class="h-2.5 bg-gray-100 rounded w-3/4"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div id="popup-empty" class="hidden px-4 py-10 text-center">
+                <p class="text-2xl mb-2">✅</p>
+                <p class="text-xs font-semibold text-gray-500">Tidak ada notifikasi aktif</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">Semua permohonan dalam kondisi baik.</p>
+            </div>
+        </div>
+
+        @* ── Footer ── *@
+        <div class="border-t border-gray-100 px-4 py-2.5 flex items-center justify-center"
+             style="border-color:var(--border-topbar)">
+            <a href="@notifPageUrl" onclick="closeNotifPopup()"
+               class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 hover:underline">
+                Lihat Semua Notifikasi
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script>
+    // ── Storage helpers ───────────────────────────────────────────────────
+const NOTIF_READ      = 'ppid_notif_read';
+const NOTIF_DISMISSED = 'ppid_notif_dismissed';
+
+function getReadIds()      { try { return new Set(JSON.parse(localStorage.getItem(NOTIF_READ)      || '[]')); } catch { return new Set(); } }
+function getDismissedIds() { try { return new Set(JSON.parse(localStorage.getItem(NOTIF_DISMISSED) || '[]')); } catch { return new Set(); } }
+function saveReadIds(s)      { localStorage.setItem(NOTIF_READ,      JSON.stringify([...s])); }
+function saveDismissedIds(s) { localStorage.setItem(NOTIF_DISMISSED, JSON.stringify([...s])); }
+
+// ── State ─────────────────────────────────────────────────────────────
+const API_URL      = '@notifApiUrl';
+const NOTIF_PAGE   = '@notifPageUrl';
+const MAX_IN_POPUP = 5;
+
+let _allNotifs   = [];
+let _popupOpen   = false;
+let _initialized = false;   // true setelah fetch berhasil ATAU gagal (agar popup tidak stuck)
+let _fetchError  = false;
+
+// ── Bell badge update ─────────────────────────────────────────────────
+function updateBellBadge(notifs) {
+    const dismissed = getDismissedIds();
+    const read      = getReadIds();
+    const unread    = notifs.filter(n => !dismissed.has(n.id) && !read.has(n.id)).length;
+    const badge      = document.getElementById('notif-badge');
+    const bell       = document.getElementById('notif-bell-btn');
+    const popupBadge = document.getElementById('popup-unread-badge');
+
+    if (!badge || !bell) return;
+
+    if (unread > 0) {
+        badge.textContent = unread > 99 ? '99+' : unread;
+        badge.classList.remove('hidden');
+        bell.classList.add('has-unread');
+    } else {
+        badge.classList.add('hidden');
+        bell.classList.remove('has-unread');
+    }
+    if (popupBadge) {
+        popupBadge.textContent = unread;
+        popupBadge.classList.toggle('hidden', unread === 0);
+    }
+}
+
+// ── Fetch notifications ───────────────────────────────────────────────
+async function fetchNotifs() {
+    try {
+        const res = await fetch(API_URL);
+
+        // ✅ FIX: cek HTTP status sebelum parse JSON
+        // Tanpa ini, response HTML dari redirect/error menyebabkan res.json() throw,
+        // _initialized tidak pernah true, skeleton stuck selamanya.
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data   = await res.json();
+        _allNotifs   = Array.isArray(data) ? data : [];
+        _fetchError  = false;
+        _initialized = true;
+
+        updateBellBadge(_allNotifs);
+        if (_popupOpen) renderPopup();
+    } catch (e) {
+        console.warn('[Notifikasi] Gagal fetch:', e);
+        _fetchError  = true;
+        _initialized = true; // ✅ FIX: tandai initialized meski error, agar popup tidak stuck di skeleton
+        if (_popupOpen) renderPopupError();
+    }
+}
+
+// ── Render popup items ────────────────────────────────────────────────
+function renderPopup() {
+    const dismissed = getDismissedIds();
+    const read      = getReadIds();
+    const list      = document.getElementById('popup-list');
+    const skeleton  = document.getElementById('popup-skeleton');
+    const empty     = document.getElementById('popup-empty');
+
+    if (!list) return;
+    if (skeleton) skeleton.remove();
+
+    // ✅ FIX: bersihkan list dulu, lalu build ulang — tanpa dead code itemsContainer
+    list.innerHTML = '';
+
+    const visible = _allNotifs.filter(n => !dismissed.has(n.id));
+    const preview = visible.slice(0, MAX_IN_POPUP);
+    const hasMore = visible.length > MAX_IN_POPUP;
+
+    if (visible.length === 0) {
+        list.appendChild(empty);
+        empty.classList.remove('hidden');
+        updateBellBadge(_allNotifs);
+        return;
+    }
+
+    empty.classList.add('hidden');
+
+    const itemsHtml = preview.map(n => {
+        const isRead = read.has(n.id);
+        const dot    = !isRead ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0 mt-1"></span>' : '';
+        return `
+        <div class="notif-popup-item ${isRead ? '' : 'unread'}" data-id="${n.id}">
+            <div class="notif-popup-icon ${n.severity}">${n.icon}</div>
+            <div class="flex-1 min-w-0 py-0.5">
+                <p class="text-[11.5px] font-bold leading-tight ${n.severity === 'danger' ? 'text-red-700' : n.severity === 'warning' ? 'text-amber-700' : 'text-gray-800'} truncate">
+                    ${n.title}
+                </p>
+                <p class="text-[11px] text-gray-600 mt-0.5 truncate">${n.message}</p>
+                <p class="text-[10px] text-gray-400 mt-0.5 truncate">${n.detail || ''}</p>
+                <a href="${n.href}"
+                   onclick="popupItemClick('${n.id}')"
+                   class="inline-block text-[10.5px] font-semibold text-blue-600 hover:text-blue-800 mt-1">
+                    Lihat detail →
+                </a>
+            </div>
+            ${dot}
+        </div>`;
+    }).join('');
+
+    const moreHtml = hasMore
+        ? `<div class="px-4 py-2 text-center border-t border-gray-50">
+               <a href="${NOTIF_PAGE}" onclick="closeNotifPopup()"
+                  class="text-[11px] font-semibold text-gray-500 hover:text-blue-600">
+                   +${visible.length - MAX_IN_POPUP} notifikasi lainnya
+               </a>
+           </div>`
+        : '';
+
+    list.innerHTML = itemsHtml + moreHtml;
+    list.appendChild(empty); // keep in DOM (hidden)
+
+    updateBellBadge(_allNotifs);
+}
+
+// ── Error state di popup ──────────────────────────────────────────────
+function renderPopupError() {
+    const list    = document.getElementById('popup-list');
+    const skeleton= document.getElementById('popup-skeleton');
+    if (!list) return;
+    if (skeleton) skeleton.remove();
+    list.innerHTML = `
+        <div class="px-4 py-8 text-center">
+            <p class="text-lg mb-1">⚠️</p>
+            <p class="text-xs font-semibold text-gray-500 mb-2">Gagal memuat notifikasi</p>
+            <button onclick="retryFetch()"
+                    class="text-[11px] font-semibold text-blue-600 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-all">
+                ↻ Coba Lagi
+            </button>
+        </div>`;
+}
+
+function retryFetch() {
+    _initialized = false;
+    _fetchError  = false;
+    const list = document.getElementById('popup-list');
+    if (list) list.innerHTML = `
+        <div id="popup-skeleton" class="p-4 space-y-3">
+            ${[1,2,3].map(() => `
+            <div class="flex gap-3 animate-pulse">
+                <div class="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-2.5 bg-gray-100 rounded w-2/5"></div>
+                    <div class="h-2.5 bg-gray-100 rounded w-3/4"></div>
+                </div>
+            </div>`).join('')}
+        </div>`;
+    fetchNotifs();
+}
+
+// ── Toggle popup ──────────────────────────────────────────────────────
+function toggleNotifPopup() {
+    _popupOpen ? closeNotifPopup() : openNotifPopup();
+}
+
+function openNotifPopup() {
+    const popup    = document.getElementById('notif-popup');
+    const backdrop = document.getElementById('notif-backdrop');
+    popup.classList.remove('hidden');
+    backdrop.classList.remove('hidden');
+    _popupOpen = true;
+
+    if (!_initialized) {
+        fetchNotifs(); // fetch & render saat selesai
+    } else if (_fetchError) {
+        renderPopupError();
+    } else {
+        renderPopup();
+    }
+}
+
+function closeNotifPopup() {
+    const popup    = document.getElementById('notif-popup');
+    const backdrop = document.getElementById('notif-backdrop');
+    if (!popup || popup.classList.contains('hidden')) return;
+    popup.classList.add('closing');
+    setTimeout(() => {
+        popup.classList.add('hidden');
+        popup.classList.remove('closing');
+        backdrop.classList.add('hidden');
+    }, 150);
+    _popupOpen = false;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────
+function popupItemClick(id) {
+    const read = getReadIds();
+    read.add(id);
+    saveReadIds(read);
+    updateBellBadge(_allNotifs);
+    closeNotifPopup();
+}
+
+function popupMarkAllRead() {
+    const dismissed = getDismissedIds();
+    const read      = getReadIds();
+    _allNotifs.filter(n => !dismissed.has(n.id)).forEach(n => read.add(n.id));
+    saveReadIds(read);
+    if (_popupOpen) renderPopup();
+    updateBellBadge(_allNotifs);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    fetchNotifs();
+    setInterval(fetchNotifs, 5 * 60 * 1000);
+});
+
+window.addEventListener('notifUpdated', () => updateBellBadge(_allNotifs));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _popupOpen) closeNotifPopup(); });
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('ppid-theme', next);
+}
+    </script>
+}
+
+
+
+@* {{-- ══ LOGOUT MODAL ══ --}} *@
+<div id="logout-modal-backdrop"
+     class="hidden fixed inset-0 z-[99998] flex items-center justify-center"
+     style="background:rgba(0,0,0,.45);backdrop-filter:blur(3px)"
+     onclick="hideLogoutModal()">
+</div>
+
+<div id="logout-modal"
+     class="hidden fixed z-[99999] w-[min(340px,calc(100vw-24px))] rounded-2xl shadow-2xl overflow-hidden"
+     style="background:var(--bg-sidebar);border:1px solid var(--border-sidebar)">
+
+    <div class="flex flex-col items-center pt-7 pb-2 px-6">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+             style="background:#FEF2F2;border:1px solid #FECACA">
+            <svg class="w-7 h-7" style="color:#EF4444" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+        </div>
+        <p class="text-[15px] font-bold text-center" style="color:var(--topbar-title)">
+            Konfirmasi Keluar
+        </p>
+        <p class="text-[12.5px] text-center mt-1.5 leading-relaxed" style="color:var(--topbar-sub)">
+            Apakah Anda yakin ingin keluar dari sesi ini?
+        </p>
+    </div>
+
+    <div class="flex gap-2.5 px-6 pb-6 pt-4">
+        <button onclick="hideLogoutModal()"
+                class="flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all"
+                style="background:var(--toggle-bg);border-color:var(--toggle-border);color:var(--topbar-title)">
+            Tidak
+        </button>
+        <button onclick="confirmLogout()"
+                id="logout-confirm-btn"
+                class="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold text-white transition-all
+                       flex items-center justify-center gap-2"
+                style="background:#EF4444">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            Ya, Keluar
+        </button>
+    </div>
+</div>
+
+@* {{-- ══ LOGOUT SUCCESS TOAST ══ --}} *@
+<div id="logout-success-toast"
+     class="hidden fixed bottom-6 left-1/2 z-[999999]
+            flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl"
+     style="background:#111827;min-width:220px;transform:translateX(-50%)">
+    <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+         style="background:#10B981">
+        <svg class="w-3.5 h-3.5" style="color:white" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+    </div>
+    <p class="text-[13px] font-semibold" style="color:white">Logout Berhasil!</p>
+</div>
+
+<style>
+    #logout-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    #logout-modal.open    { animation: _lmIn  .22s cubic-bezier(.34,1.56,.64,1) both; }
+    #logout-modal.closing { animation: _lmOut .18s ease both; }
+    @@keyframes _lmIn  {
+        from { opacity:0; transform:translate(-50%,-50%) scale(.92); }
+        to   { opacity:1; transform:translate(-50%,-50%) scale(1);   }
+    }
+    @@keyframes _lmOut {
+        from { opacity:1; transform:translate(-50%,-50%) scale(1);   }
+        to   { opacity:0; transform:translate(-50%,-50%) scale(.94); }
+    }
+    #logout-success-toast.show { animation: _ltIn .3s cubic-bezier(.34,1.56,.64,1) both; }
+    @@keyframes _ltIn { from{opacity:0;transform:translateX(-50%) translateY(16px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    #logout-confirm-btn:hover { filter:brightness(.9); }
+    #logout-confirm-btn:active { transform:scale(.98); }
+</style>
+
+<script>
+(function () {
+    function showLogoutModal() {
+        document.getElementById('logout-modal-backdrop').classList.remove('hidden');
+        var m = document.getElementById('logout-modal');
+        m.classList.remove('hidden', 'closing');
+        m.classList.add('open');
+        document.addEventListener('keydown', _escHandler);
+    }
+
+    function hideLogoutModal() {
+        var m = document.getElementById('logout-modal');
+        m.classList.remove('open');
+        m.classList.add('closing');
+        setTimeout(function () {
+            m.classList.add('hidden');
+            m.classList.remove('closing');
+            document.getElementById('logout-modal-backdrop').classList.add('hidden');
+        }, 180);
+        document.removeEventListener('keydown', _escHandler);
+    }
+
+    function _escHandler(e) { if (e.key === 'Escape') hideLogoutModal(); }
+
+    function confirmLogout() {
+        var btn = document.getElementById('logout-confirm-btn');
+        btn.disabled = true;
+        btn.innerHTML =
+            '<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">' +
+            '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>' +
+            '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>' +
+            ' Keluar\u2026';
+
+        var m        = document.getElementById('logout-modal');
+        var backdrop = document.getElementById('logout-modal-backdrop');
+        var toast    = document.getElementById('logout-success-toast');
+
+        m.classList.remove('open');
+        m.classList.add('closing');
+
+        setTimeout(function () {
+            m.classList.add('hidden');
+            m.classList.remove('closing');
+            backdrop.classList.add('hidden');
+
+            toast.classList.remove('hidden');
+            toast.classList.add('show');
+
+            setTimeout(function () {
+                document.getElementById('logout-form').submit();
+            }, 950);
+        }, 180);
+    }
+
+    window.showLogoutModal = showLogoutModal;
+    window.hideLogoutModal = hideLogoutModal;
+    window.confirmLogout   = confirmLogout;
+}());
+</script>
+
+<script>
+(function () {
+    function openSidebar() {
+        document.getElementById('app-sidebar').classList.add('sidebar-open');
+        document.getElementById('sidebar-backdrop').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        document.getElementById('app-sidebar').classList.remove('sidebar-open');
+        document.getElementById('sidebar-backdrop').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    window.addEventListener('resize', function () {
+        if (window.innerWidth >= 1024) closeSidebar();
+    });
+    window.openSidebar  = openSidebar;
+    window.closeSidebar = closeSidebar;
+}());
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+@* ── Helper: render nav item tanpa duplikasi HTML ── *@
+@using Microsoft.AspNetCore.Html
+@functions {
+    IHtmlContent NavItem(string href, string currentPath, string label, string svgPaths, bool exact = true)
+    {
+        bool isActive = exact
+            ? currentPath == href
+            : currentPath.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+
+        var cls = isActive ? "nav-item active" : "nav-item";
+
+        var html = $@"
+<a href=""{href}"" class=""{cls}"">
+    <span class=""nav-icon"">
+        <svg class=""w-3.5 h-3.5"" fill=""none"" viewBox=""0 0 24 24"" stroke=""currentColor"" stroke-width=""2"">
+            {svgPaths}
+        </svg>
+    </span>
+    {label}
+</a>";
+
+        return new HtmlString(html);
+    }
+}

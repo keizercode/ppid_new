@@ -1,0 +1,135 @@
+<script>
+(function () {
+    if (window.__filePreviewReady) return;
+    window.__filePreviewReady = true;
+
+    const IMG_EXT = new Set(['jpg','jpeg','png','gif','webp','svg','bmp']);
+
+    // ── Validasi URL: hanya izinkan relative path atau http/https ──────────
+    function isSafeUrl(url) {
+        if (!url) return false;
+        if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
+        try {
+            const p = new URL(url);
+            return p.protocol === 'https:' || p.protocol === 'http:';
+        } catch {
+            return false;
+        }
+    }
+
+    // ── Buat elemen DOM secara programatik (bukan innerHTML) ───────────────
+    function buildFallback(url, name) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'text-align:center;padding:2.5rem';
+
+        const icon = document.createElement('div');
+        icon.style.cssText = 'font-size:3.5rem;margin-bottom:.75rem';
+        icon.textContent = '📄';                     // textContent — tidak di-parse sebagai HTML
+
+        const title = document.createElement('p');
+        title.style.cssText = 'font-size:.875rem;font-weight:700;color:#374151;margin:.0 0 .25rem';
+        title.textContent = name;                    // aman: tidak melalui innerHTML
+
+        const hint = document.createElement('p');
+        hint.style.cssText = 'font-size:.75rem;color:#9ca3af;margin-bottom:1.25rem';
+        hint.textContent = 'Format ini tidak dapat dipratinjau langsung di browser.';
+
+        const btn = document.createElement('a');
+        btn.href            = url;                   // URL sudah divalidasi isSafeUrl()
+        btn.target          = '_blank';
+        btn.rel             = 'noopener noreferrer'; // cegah tab-napping
+        btn.download        = name;
+        btn.style.cssText   = [
+            'display:inline-flex', 'align-items:center', 'gap:.5rem',
+            'background:#2563eb', 'color:#fff', 'font-size:.8125rem',
+            'font-weight:700', 'padding:.6rem 1.25rem',
+            'border-radius:.75rem', 'text-decoration:none'
+        ].join(';');
+        btn.textContent = '⬇ Unduh File';
+
+        wrap.append(icon, title, hint, btn);
+        return wrap;
+    }
+
+    window.previewFile = function (url, name) {
+        // ── Guard: tolak URL tidak aman ────────────────────────────────────
+        if (!isSafeUrl(url)) {
+            console.warn('[previewFile] URL ditolak:', url);
+            return;
+        }
+
+        const safeName = name || 'File';
+
+        document.getElementById('previewFileName').textContent = safeName;
+
+        const dlBtn     = document.getElementById('previewDownloadBtn');
+        dlBtn.href      = url;
+        dlBtn.download  = safeName;
+        dlBtn.rel       = 'noopener noreferrer';
+
+        const body = document.getElementById('previewBody');
+        body.innerHTML  = '';                        // bersihkan konten sebelumnya
+        body.classList.remove('items-center', 'justify-center');
+
+        const ext = url.split('?')[0].split('.').pop().toLowerCase();
+
+        if (ext === 'pdf') {
+            const iframe        = document.createElement('iframe');
+            iframe.src          = url;
+            iframe.title        = safeName;
+            iframe.style.cssText = 'width:100%;height:75vh;border:0;display:block;';
+            body.appendChild(iframe);
+
+        } else if (IMG_EXT.has(ext)) {
+            body.classList.add('items-center', 'justify-center');
+            const img           = document.createElement('img');
+            img.src             = url;
+            img.alt             = safeName;
+            img.style.cssText   = [
+                'max-width:100%', 'max-height:72vh', 'object-fit:contain',
+                'border-radius:.75rem',
+                'box-shadow:0 4px 20px rgba(0,0,0,.12)'
+            ].join(';');
+            body.appendChild(img);
+
+        } else {
+            body.classList.add('items-center', 'justify-center');
+            body.appendChild(buildFallback(url, safeName)); // DOM API, bukan innerHTML
+        }
+
+        document.getElementById('filePreviewModal').classList.remove('hidden');
+    };
+
+    function bindPreviewButtons() {
+        document.querySelectorAll('[data-preview-url]').forEach(function (btn) {
+            if (btn.dataset.previewBound) return;
+            btn.dataset.previewBound = '1';
+            btn.addEventListener('click', function () {
+                window.previewFile(
+                    btn.dataset.previewUrl  || '',
+                    btn.dataset.previewName || 'File'
+                );
+            });
+        });
+    }
+
+    window.closePreviewBackdrop = function (e) {
+        const modal = document.getElementById('filePreviewModal');
+        if (e.target === modal || e.target.classList.contains('absolute')) {
+            modal.classList.add('hidden');
+        }
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.getElementById('filePreviewModal')?.classList.add('hidden');
+        }
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindPreviewButtons);
+    } else {
+        bindPreviewButtons();
+    }
+}());
+</script>

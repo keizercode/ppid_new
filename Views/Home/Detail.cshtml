@@ -1,0 +1,729 @@
+@model DetailLacakViewModel
+@{
+    ViewData["Title"] = "Status " + Model.Permohonan.NoPermohonan;
+    ViewData["ActiveNav"] = "detail";
+    var p  = Model.Permohonan;
+    var pr = Model.Pribadi;
+
+    // Dokumen data hasil (untuk diunduh)
+    var dokDataHasil = p.Dokumen
+        .Where(d => d.JenisDokumenPPIDID == JenisDokumenId.DataHasil)
+        .OrderByDescending(d => d.CreatedAt)
+        .FirstOrDefault();
+
+    // Badge status utama
+    string statusBg = p.StatusPPIDID == StatusId.Selesai  ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      p.StatusPPIDID == StatusId.DataSiap  ? "bg-blue-50 text-blue-700 border-blue-200" :
+                      p.StatusPPIDID == StatusId.Baru       ? "bg-gray-100 text-gray-500 border-gray-200" :
+                                                               "bg-amber-50 text-amber-700 border-amber-200";
+    string statusDot = p.StatusPPIDID == StatusId.Selesai  ? "bg-emerald-500" :
+                       p.StatusPPIDID == StatusId.DataSiap  ? "bg-blue-500" :
+                       p.StatusPPIDID == StatusId.Baru       ? "bg-gray-400" : "bg-amber-500";
+
+    // Sub-tasks per jenis
+    var stData = Model.GetSubTask(JenisTask.PermintaanData);
+    var stObs  = Model.GetSubTask(JenisTask.Observasi);
+    var stWaw  = Model.GetSubTask(JenisTask.Wawancara);
+
+    // Jadwal aktif
+    var jadObs = Model.GetJadwalAktif("Observasi");
+    var jadWaw = Model.GetJadwalAktif("Wawancara");
+
+    // Kondisi paralel aktif (sedang diproses step 6)
+    bool isParallelActive =
+    (p.StatusPPIDID == StatusId.Didisposisi
+     || p.StatusPPIDID == StatusId.DiProses
+     || p.StatusPPIDID == StatusId.ObservasiDijadwalkan
+     || p.StatusPPIDID == StatusId.ObservasiSelesai
+     || p.StatusPPIDID == StatusId.WawancaraDijadwalkan
+     || p.StatusPPIDID == StatusId.WawancaraSelesai)
+    && (p.IsPermintaanData || p.IsObservasi || p.IsWawancara);
+
+ // Feedback & upload laporan
+    var feedbackMap       = ViewData["FeedbackMap"] as Dictionary<string, bool> ?? new();
+    bool feedbackTerisi   = feedbackMap.ContainsKey(JenisTask.Semua);
+
+ bool laporanTerisi = p.Dokumen.Any(d => d.JenisDokumenPPIDID == JenisDokumenId.TugasFinal);
+
+
+    // Helper: reschedule badge
+    string BadgeReschedule(SubTaskPPID? st) =>
+        st != null && st.RescheduleCount > 0 ? $"Dijadwal Ulang {st.RescheduleCount}×" : string.Empty;
+
+    // Helper: overdue task (sudah lewat jadwal tapi belum selesai — HANYA REMINDER)
+    bool IsOverdueTask(SubTaskPPID? st) =>
+        st != null && st.IsInProgress
+        && st.TanggalJadwal.HasValue
+        && st.TanggalJadwal.Value < DateOnly.FromDateTime(DateTime.Today)
+        && !st.IsSelesai;
+}
+
+<div id="update-banner"
+     class="hidden fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white text-sm font-bold text-center py-3 shadow-lg cursor-pointer"
+     onclick="window.location.reload()">
+    🔄 Status permohonan telah diperbarui — klik di sini untuk memuat ulang halaman
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+
+    <a href="/"
+       class="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-800 text-sm font-medium mb-6 transition-colors">
+        ← Cek Nomor Lain
+    </a>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="bg-emerald-50 border border-emerald-300 rounded-2xl px-5 py-3 mb-5 flex items-start gap-3">
+            <span class="text-emerald-500 text-lg flex-shrink-0">✅</span>
+            <p class="text-emerald-800 text-sm font-medium">@Html.Raw(TempData["Success"])</p>
+        </div>
+    }
+
+    @* Header Card *@
+    <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Nomor Permohonan</p>
+                <h2 class="text-2xl font-extrabold font-mono text-gray-900 tracking-tight">@p.NoPermohonan</h2>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                    <span class="text-gray-400 text-xs">📅 @p.TanggalPermohonan?.ToString("dd MMMM yyyy")</span>
+                    <span class="text-xs font-semibold @(p.KategoriPemohon == "Mahasiswa" ? "text-blue-600" : "text-emerald-600")">
+                        @(p.KategoriPemohon == "Mahasiswa" ? "🎓 Mahasiswa" : "🏢 LSM")
+                    </span>
+                </div>
+            </div>
+            <div class="flex flex-col items-start sm:items-end gap-2">
+                <div class="flex items-center gap-2 border @statusBg rounded-full px-4 py-2">
+                    <span class="w-2 h-2 rounded-full @statusDot flex-shrink-0"></span>
+                    <span class="text-sm font-semibold">@(p.Status?.NamaStatusPPID ?? "—")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        @* ══ TIMELINE ALUR PROSES ══ *@
+        <div class="lg:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Alur Proses</p>
+
+            <ol class="space-y-0">
+                @foreach (var step in Model.Riwayat)
+                {
+                    bool isLast = step == Model.Riwayat.Last();
+                    string lineColor = step.Selesai ? "bg-emerald-200" : "bg-gray-100";
+
+                    <li class="flex gap-4 pb-0 relative">
+                        @if (!isLast)
+                        {
+                            <div class="absolute left-4 top-9 w-0.5 @lineColor" style="height:calc(100% - 36px + 8px)"></div>
+                        }
+
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 mt-1
+                            @(step.Selesai ? "bg-emerald-500 text-white" :
+                              step.AktifSekarang ? "bg-[#1B3B6F] text-white ring-4 ring-[#1B3B6F]/15" :
+                                                   "bg-gray-100 text-gray-400")">
+                            @(step.Selesai ? "✓" : step.AktifSekarang ? "●" : "○")
+                        </div>
+
+                        <div class="flex-1 mb-3">
+                            <div class="rounded-xl px-4 py-3 border
+                                @(step.AktifSekarang ? "bg-blue-50 border-blue-100" :
+                                  step.Selesai       ? "bg-emerald-50 border-emerald-100" :
+                                                       "bg-gray-50 border-gray-100")">
+                                <p class="font-semibold text-sm
+                                    @(step.AktifSekarang ? "text-blue-800" :
+                                      step.Selesai       ? "text-emerald-700" : "text-gray-400")">
+                                    @step.Label
+                                </p>
+
+                                @if (!string.IsNullOrEmpty(step.SubLabel) && !step.AktifSekarang && !step.Selesai)
+                                {
+                                    <p class="text-[11px] text-gray-400 mt-0.5">@step.SubLabel</p>
+                                }
+
+                                @* ══ STEP 6 AKTIF: Panel sub-tugas paralel ══ *@
+                                @if (step.AktifSekarang && isParallelActive)
+                                {
+                                    <div class="mt-3 space-y-2">
+
+
+                                        @* ── Permintaan Data ── *@
+@if (p.IsPermintaanData)
+{
+    bool done      = stData?.IsSelesai    ?? false;
+    bool canc      = stData?.IsDibatalkan ?? false;
+    bool isPending = stData != null && stData.IsPending;
+
+    <div class="bg-white border @(done ? "border-emerald-200" : canc ? "border-red-100" : isPending ? "border-gray-100" : "border-blue-100") rounded-lg px-3 py-2">
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0
+                    @(done ? "bg-emerald-100 text-emerald-600" : canc ? "bg-red-100 text-red-500" : isPending ? "bg-gray-100 text-gray-400" : "bg-blue-100 text-blue-600")">
+                    @(done ? "✓" : canc ? "✗" : isPending ? "○" : "◑")
+                </span>
+                <span class="text-xs font-semibold @(done ? "text-emerald-700" : canc ? "text-red-500" : isPending ? "text-gray-400" : "text-blue-700")">
+                    📊 Permintaan Data
+                </span>
+            </div>
+            <div class="flex items-center gap-1 flex-wrap justify-end">
+                @if (done)
+                {
+                    <span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Selesai ✓</span>
+                }
+                else if (canc)
+                {
+                    <span class="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">Dibatalkan</span>
+                }
+            </div>
+        </div>
+        @if (stData is null)
+        {
+            <p class="text-[10px] text-gray-400 mt-1 pl-7">Menunggu konfirmasi dari petugas KDI.</p>
+        }
+    </div>
+}
+
+
+                                        @* ── Observasi ── *@
+                                        @if (p.IsObservasi)
+                                        {
+                                            bool done    = stObs?.IsSelesai ?? false;
+                                            bool canc    = stObs?.IsDibatalkan ?? false;
+                                            bool sched   = stObs?.IsInProgress ?? false;
+                                            bool waiting = stObs?.IsWaitingKonfirmasi ?? false;
+                                            bool isNew   = Model.IsJadwalBaru("Observasi");
+                                            bool overdue = IsOverdueTask(stObs);
+                                            string rescBadge = BadgeReschedule(stObs);
+
+                                            <div class="bg-white border @(done ? "border-emerald-200" : canc ? "border-red-100" : waiting ? "border-blue-200" : overdue ? "border-red-200" : sched ? "border-orange-200" : "border-gray-100") rounded-lg px-3 py-2">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0
+                                                            @(done ? "bg-emerald-100 text-emerald-600" : canc ? "bg-red-100 text-red-500" : waiting ? "bg-blue-100 text-blue-600" : overdue ? "bg-amber-100 text-amber-600" : sched ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-400")">
+                                                            @(done ? "✓" : canc ? "✗" : waiting ? "📤" : overdue ? "⏰" : sched ? "⏳" : "○")
+                                                        </span>
+                                                        <span class="text-xs font-semibold @(done ? "text-emerald-700" : canc ? "text-red-500" : waiting ? "text-blue-700" : overdue ? "text-amber-700" : sched ? "text-orange-700" : "text-gray-400")">
+                                                            🔍 Observasi
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex flex-wrap items-center gap-1 justify-end">
+                                                        @if (isNew && sched && !overdue)
+                                                        { <span class="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse">BARU</span> }
+                                                        @if (!string.IsNullOrEmpty(rescBadge))
+                                                        { <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">🔄 @rescBadge</span> }
+                                                        @if (done)
+                                                        { <span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Selesai ✓</span> }
+                                                        else if (canc)
+                                                        { <span class="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">Dibatalkan</span> }
+                                                        else if (sched)
+                                                        { <span class="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-semibold">⏳ Dijadwalkan</span> }
+                                                    </div>
+                                                </div>
+
+                                                @* Overdue reminder (bukan auto-complete!) *@
+                                               @if (overdue && !waiting)
+                                                {
+                                                    <div class="mt-1.5 pl-7">
+                                                        <p class="text-[11px] text-amber-700 font-semibold">
+                                                            ⏰ Jadwal observasi (@stObs!.TanggalJadwal!.Value.ToString("dd MMM yyyy")) sudah lewat. Segera konfirmasi ke petugas jika observasi telah dilaksanakan.
+                                                        </p>
+                                                    </div>
+                                                }
+
+                                                @if (waiting)
+                                                {
+                                                    <div class="mt-1.5 pl-7">
+                                                        <p class="text-[11px] text-blue-700 font-semibold">
+                                                            📤 Dokumentasi berhasil diunggah.
+                                                        </p>
+                                                    </div>
+                                                }
+
+                                                @if (jadObs != null && !canc)
+                                                {
+                                                    <div class="mt-1.5 pl-7 space-y-0.5">
+                                                        <p class="text-[11px] text-orange-700 font-medium">
+                                                            📅 @jadObs.Tanggal?.ToString("dddd, dd MMM yyyy") pukul @jadObs.Waktu?.ToString("HH:mm") WIB
+                                                        </p>
+                                                        @if (!string.IsNullOrEmpty(jadObs.LokasiJenis))
+                                                        {
+                                                            <p class="text-[11px] text-gray-500">
+                                                                @(jadObs.LokasiJenis == "Online" ? "🌐 Online" : "📍 Offline"):
+                                                                @if (!string.IsNullOrEmpty(jadObs.LokasiDetail))
+                                                                {
+                                                                    @if (jadObs.LokasiJenis == "Online" && (jadObs.LokasiDetail.StartsWith("http")))
+                                                                    { <a href="@jadObs.LokasiDetail" target="_blank" class="text-blue-500 underline">@jadObs.LokasiDetail</a> }
+                                                                    else
+                                                                    { <strong>@jadObs.LokasiDetail</strong> }
+                                                                }
+                                                            </p>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(jadObs.NamaPIC))
+                                                        {
+                                                            <p class="text-[11px] text-gray-500">PIC: <strong>@jadObs.NamaPIC</strong>
+                                                                @if (!string.IsNullOrEmpty(jadObs.TeleponPIC)) {
+                                                                    <a href="tel:@jadObs.TeleponPIC" class="ml-1 text-blue-500 hover:underline">📞 @jadObs.TeleponPIC</a>
+                                                                }
+                                                            </p>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        @* ── Wawancara ── *@
+                                        @if (p.IsWawancara)
+                                        {
+                                            bool done    = stWaw?.IsSelesai ?? false;
+                                            bool canc    = stWaw?.IsDibatalkan ?? false;
+                                            bool sched   = stWaw?.IsInProgress ?? false;
+                                            bool waiting = stWaw?.IsWaitingKonfirmasi ?? false;
+                                            bool isNew   = Model.IsJadwalBaru("Wawancara");
+                                            bool overdue = IsOverdueTask(stWaw);
+                                            string rescBadge = BadgeReschedule(stWaw);
+
+                                            <div class="bg-white border @(done ? "border-emerald-200" : canc ? "border-red-100" : waiting ? "border-blue-200" : overdue ? "border-amber-200" : sched ? "border-violet-200" : "border-gray-100") rounded-lg px-3 py-2">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0
+                                                            @(done ? "bg-emerald-100 text-emerald-600" : canc ? "bg-red-100 text-red-500" : waiting ? "bg-blue-100 text-blue-600" : overdue ? "bg-amber-100 text-amber-600" : sched ? "bg-violet-100 text-violet-600" : "bg-gray-100 text-gray-400")">
+                                                            @(done ? "✓" : canc ? "✗" : waiting ? "📤" : overdue ? "⏰" : sched ? "⏳" : "○")
+                                                        </span>
+                                                        <span class="text-xs font-semibold @(done ? "text-emerald-700" : canc ? "text-red-500" : waiting ? "text-blue-700" : overdue ? "text-amber-700" : sched ? "text-violet-700" : "text-gray-400")">
+                                                            🎤 Wawancara
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex flex-wrap items-center gap-1 justify-end">
+                                                        @if (isNew && sched && !overdue)
+                                                        { <span class="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold animate-pulse">BARU</span> }
+                                                        @if (!string.IsNullOrEmpty(rescBadge))
+                                                        { <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">🔄 @rescBadge</span> }
+                                                        @if (done)
+                                                        { <span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Selesai ✓</span> }
+                                                        else if (canc)
+                                                        { <span class="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">Dibatalkan</span> }
+                                                        else if (sched)
+                                                        { <span class="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-semibold">⏳ Dijadwalkan</span> }
+                                                    </div>
+                                                </div>
+
+                                                @if (overdue && !waiting)
+                                                {
+                                                    <div class="mt-1.5 pl-7">
+                                                        <p class="text-[11px] text-amber-700 font-semibold">
+                                                            ⏰ Jadwal wawancara (@stWaw!.TanggalJadwal!.Value.ToString("dd MMM yyyy")) sudah lewat. Segera konfirmasi ke petugas jika wawancara telah dilaksanakan.
+                                                        </p>
+                                                    </div>
+                                                }
+
+                                                @if (waiting)
+                                                {
+                                                    <div class="mt-1.5 pl-7">
+                                                        <p class="text-[11px] text-blue-700 font-semibold">
+                                                            📤 Dokumentasi berhasil diunggah.
+                                                        </p>
+                                                    </div>
+                                                }
+
+                                                @if (jadWaw != null && !canc)
+                                                {
+                                                    <div class="mt-1.5 pl-7 space-y-0.5">
+                                                        <p class="text-[11px] text-violet-700 font-medium">
+                                                            📅 @jadWaw.Tanggal?.ToString("dddd, dd MMM yyyy") pukul @jadWaw.Waktu?.ToString("HH:mm") WIB
+                                                        </p>
+                                                        @if (!string.IsNullOrEmpty(jadWaw.LokasiJenis))
+                                                        {
+                                                            <p class="text-[11px] text-gray-500">
+                                                                @(jadWaw.LokasiJenis == "Online" ? "🌐 Online" : "📍 Offline"):
+                                                                @if (!string.IsNullOrEmpty(jadWaw.LokasiDetail))
+                                                                {
+                                                                    @if (jadWaw.LokasiJenis == "Online" && (jadWaw.LokasiDetail.StartsWith("http")))
+                                                                    { <a href="@jadWaw.LokasiDetail" target="_blank" class="text-blue-500 underline">@jadWaw.LokasiDetail</a> }
+                                                                    else
+                                                                    { <strong>@jadWaw.LokasiDetail</strong> }
+                                                                }
+                                                            </p>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(jadWaw.NamaPIC))
+                                                        {
+                                                            <p class="text-[11px] text-gray-500">Narasumber: <strong>@jadWaw.NamaPIC</strong>
+                                                                @if (!string.IsNullOrEmpty(jadWaw.TeleponPIC)) {
+                                                                    <a href="tel:@jadWaw.TeleponPIC" class="ml-1 text-blue-500 hover:underline">📞 @jadWaw.TeleponPIC</a>
+                                                                }
+                                                            </p>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+
+
+                                    <p class="text-blue-500 text-[11px] mt-2 font-medium">
+                                        ⏳ Sedang diproses secara paralel
+                                    </p>
+                                }
+
+                                @* ── Step lain yang sedang aktif (bukan parallel) ── *@
+                                @if (step.AktifSekarang && !isParallelActive
+                                     && step.StatusId != StatusId.Selesai
+                                     && step.StatusId != StatusId.FeedbackPemohon)
+                                {
+                                    <p class="text-blue-500 text-xs mt-1 font-medium">⏳ Sedang dalam proses</p>
+                                }
+
+                                @* ── STEP 7 AKTIF: Unggah Laporan & Isi Feedback (DataSiap → FeedbackPemohon) ── *@
+
+
+                                @* AFTER *@
+@* ── STEP 7 AKTIF: Unggah Laporan & Isi Feedback (DataSiap → FeedbackPemohon) ── *@
+
+@if (step.AktifSekarang && step.StatusId == StatusId.FeedbackPemohon)
+{
+    @* Preamble kontekstual berdasarkan status aktual *@
+    @if (p.StatusPPIDID == StatusId.DataSiap)
+    {
+        <p class="text-blue-600 text-[11px] mt-1.5 leading-snug font-medium">
+            📦 Semua data sudah siap. Unduh data Anda, lalu unggah hasil laporan.
+        </p>
+    }
+
+    @if (feedbackTerisi)
+    {
+        <p class="text-emerald-600 text-xs mt-1 font-semibold">✅ Feedback sudah dikirim. Terima kasih!</p>
+    }
+    else
+    {
+        <div class="mt-2 space-y-1.5">
+            <a href="@Url.Action("Feedback", "Home", new { id = p.PermohonanPPIDID })"
+               class="inline-flex items-center gap-1.5 text-xs bg-[#002d7a] hover:bg-blue-900 text-white font-bold px-3 py-1.5 rounded-lg transition-colors">
+                @(laporanTerisi ? "📝 Isi Feedback →" : "📤 Unggah Hasil Laporan & Isi Feedback →")
+            </a>
+            @if (!laporanTerisi)
+            {
+                <p class="text-gray-400 text-[10px] leading-snug">
+                    PDF / Word — maks. 50 MB.
+                </p>
+            }
+        </div>
+    }
+}
+
+                                @* ══ STEP 8: Selesai ══ *@
+                                @if (step.AktifSekarang && step.StatusId == StatusId.Selesai)
+                                {
+                                    <p class="text-emerald-600 text-xs mt-1 font-semibold">
+                                        🏁 Permohonan telah selesai@(p.TanggalSelesai.HasValue ? $" — {p.TanggalSelesai.Value:dd MMM yyyy}" : "")
+                                    </p>
+                                }
+
+                                @* Step yang sudah selesai — tampilkan sub-label *@
+                                @if (step.Selesai && !string.IsNullOrEmpty(step.SubLabel))
+                                {
+                                    <p class="text-[11px] text-emerald-600 mt-0.5">@step.SubLabel</p>
+                                }
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ol>
+        </div>
+
+        @* ══ PANEL KANAN: Info + Jadwal + Data ══ *@
+        <div class="lg:col-span-2 space-y-4">
+
+            @* Detail Permohonan *@
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Detail Permohonan</p>
+                <dl class="space-y-3.5">
+                    <div>
+                        <dt class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-0.5">Pemohon</dt>
+                        <dd class="font-semibold text-gray-800 text-sm">@pr?.Nama</dd>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.PribadiPPID?.Lembaga)) {
+                        <div>
+                            <dt class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-0.5">Lembaga</dt>
+                            <dd class="text-gray-700 text-sm">@Model.PribadiPPID.Lembaga</dd>
+                        </div>
+                    }
+                    <div>
+                        <dt class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-0.5">Judul Penelitian</dt>
+                        <dd class="text-gray-700 text-sm leading-snug">@p.JudulPenelitian</dd>
+                    </div>
+                    @if (!string.IsNullOrEmpty(p.Pengampu)) {
+                        <div>
+                            <dt class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-0.5">Pengampu / PIC</dt>
+                            <dd class="text-gray-700 text-sm">@p.Pengampu
+                                @if (!string.IsNullOrEmpty(p.TeleponPengampu)) {
+                                    <a href="tel:@p.TeleponPengampu" class="ml-2 text-blue-500 text-xs hover:underline">📞 @p.TeleponPengampu</a>
+                                }
+                            </dd>
+                        </div>
+                    }
+                    <div>
+                        <dt class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-1.5">Keperluan</dt>
+                        <dd class="flex flex-wrap gap-1.5">
+                            @if (p.IsObservasi)      { <span class="bg-orange-50 border border-orange-200 text-orange-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Observasi</span> }
+                            @if (p.IsPermintaanData) { <span class="bg-blue-50 border border-blue-200 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Permintaan Data</span> }
+                            @if (p.IsWawancara)      { <span class="bg-violet-50 border border-violet-200 text-violet-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Wawancara</span> }
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            @* Jadwal aktif cards *@
+            @foreach (var jenis in new[] { "Observasi", "Wawancara" })
+            {
+                var jadwal = Model.GetJadwalAktif(jenis);
+                if (jadwal is null) continue;
+
+                bool isWaw      = jenis == "Wawancara";
+                bool isNewJad   = Model.IsJadwalBaru(jenis);
+                var  stTask     = jenis == "Wawancara" ? stWaw : stObs;
+                int  rescCount  = stTask?.RescheduleCount ?? 0;
+                bool isOverdueCard = IsOverdueTask(stTask);
+
+                string cardBd  = isOverdueCard ? "border-amber-300" : isWaw ? "border-violet-200" : "border-orange-200";
+                string icon    = isWaw ? "🎤" : "📅";
+                string itemBg  = isOverdueCard ? "bg-amber-50 border-amber-100" : isWaw ? "bg-violet-50 border-violet-100" : "bg-orange-50 border-orange-100";
+                string titleC  = isOverdueCard ? "text-amber-700" : isWaw ? "text-violet-800" : "text-orange-800";
+                string timeC   = isOverdueCard ? "text-amber-600" : isWaw ? "text-violet-600" : "text-orange-600";
+                string picLabel = isWaw ? "Narasumber" : "PIC";
+
+                <div class="bg-white rounded-2xl border @cardBd shadow-sm p-5">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 @(isOverdueCard ? "bg-amber-50 border-amber-200" : isWaw ? "bg-violet-50 border-violet-200" : "bg-orange-50 border-orange-200") rounded-lg flex items-center justify-center text-sm border">@icon</div>
+                            <p class="font-bold text-gray-800 text-sm">Jadwal @jenis</p>
+                        </div>
+                        <div class="flex gap-1 flex-wrap justify-end">
+                            @if (isOverdueCard)
+                            { <span class="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-bold">⏰ Lewat Jadwal</span> }
+                            else if (isNewJad)
+                            { <span class="text-[10px] bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-bold animate-pulse">BARU</span> }
+                            @if (rescCount > 0)
+                            { <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold">🔄 Diubah @rescCount×</span> }
+                        </div>
+                    </div>
+
+                    <div class="@itemBg rounded-xl px-3 py-2.5 border">
+                        <p class="text-sm font-bold @titleC">@jadwal.Tanggal?.ToString("dddd, dd MMM yyyy")</p>
+                        <p class="text-xs @timeC font-medium">Pukul @jadwal.Waktu?.ToString("HH:mm") WIB</p>
+
+                        @* Lokasi *@
+                        @if (!string.IsNullOrEmpty(jadwal.LokasiJenis))
+                        {
+                            <p class="text-xs @timeC mt-1">
+                                @(jadwal.LokasiJenis == "Online" ? "🌐 Online" : "📍 Offline"):
+                                @if (jadwal.LokasiJenis == "Online" && !string.IsNullOrEmpty(jadwal.LokasiDetail)
+                                     && (jadwal.LokasiDetail.StartsWith("http")))
+                                {
+                                    <a href="@jadwal.LokasiDetail" target="_blank" class="underline font-medium">Buka Link Meeting →</a>
+                                }
+                                else if (!string.IsNullOrEmpty(jadwal.LokasiDetail))
+                                {
+                                    <strong>@jadwal.LokasiDetail</strong>
+                                }
+                            </p>
+                        }
+
+                        @if (!string.IsNullOrEmpty(jadwal.NamaPIC))
+                        {
+                            <p class="text-xs @(isWaw ? "text-violet-600" : "text-orange-600") mt-0.5">@picLabel: <strong>@jadwal.NamaPIC</strong></p>
+                            @if (!string.IsNullOrEmpty(jadwal.TeleponPIC))
+                            {
+                                <a href="tel:@jadwal.TeleponPIC"
+                                   class="mt-1 inline-flex items-center gap-1 text-[11px] @(isWaw ? "text-violet-500" : "text-orange-500") hover:underline">
+                                    📞 @jadwal.TeleponPIC
+                                </a>
+                            }
+                        }
+                    </div>
+
+                    @if (isOverdueCard)
+                    {
+                        <p class="text-[11px] text-amber-600 mt-1.5 font-medium">
+                            ⏰ Jadwal sudah lewat — hubungi petugas untuk konfirmasi pelaksanaan.
+                        </p>
+                    }
+                    else if (rescCount > 0)
+                    { <p class="text-[11px] text-amber-600 mt-1.5">ℹ️ Jadwal sudah diubah @rescCount× — gunakan jadwal terbaru di atas.</p> }
+                </div>
+            }
+
+            @* Data Tersedia — per keperluan *@
+@{
+    var fileItems = new List<(string Icon, string Label, string Href, string BtnColor)>();
+
+    // Hanya permintaan data yang bisa diunduh dari portal publik
+    if (p.IsPermintaanData && stData?.IsSelesai == true && !string.IsNullOrEmpty(stData.FilePath))
+        fileItems.Add(("📊",
+            $"Data Permintaan{(!string.IsNullOrEmpty(stData.NamaFile) ? $" — {stData.NamaFile}" : "")}",
+            stData.FilePath!,
+            "bg-blue-600 hover:bg-blue-700"));
+
+    // NEW — tampil segera setelah KDI upload, tidak perlu tunggu DataSiap:
+bool tampilkanPanelData = fileItems.Any()
+    && p.StatusPPIDID != StatusId.Dibatalkan;
+}
+
+@if (tampilkanPanelData)
+{
+    <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm p-5">
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-7 h-7 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-center text-sm">✅</div>
+            <div>
+                <p class="font-bold text-gray-800 text-sm">Data Siap Diunduh</p>
+                @if (fileItems.Count > 1)
+                {
+                    <p class="text-[10px] text-gray-400">@fileItems.Count file tersedia</p>
+                }
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            @foreach (var (icon, label, href, btnColor) in fileItems)
+            {
+                <a href="@href" target="_blank"
+                class="group flex items-center gap-3 w-full bg-slate-100 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition hover:bg-slate-200">
+
+                    <!-- Icon kiri -->
+                    <span class="flex items-center justify-center w-5 h-5 text-sm opacity-80">
+                        @icon
+                    </span>
+
+                    <!-- Label -->
+                    <span class="flex-1 text-left truncate">
+                        @label
+                    </span>
+
+                    <!-- Icon kanan -->
+                    <span class="flex items-center justify-center w-4 h-4 opacity-50 group-hover:translate-y-0.5 transition">
+                        ↓
+                    </span>
+                </a>
+            }
+        </div>
+
+    </div>
+}
+            @* di bawah ini belum dipakai *@
+            @* Upload Laporan Final (dari DataSiap ke atas)
+            @{
+                var dokTugas   = p.Dokumen.Where(d => d.JenisDokumenPPIDID == JenisDokumenId.TugasFinal)
+                                          .OrderByDescending(d => d.CreatedAt).ToList();
+                bool canUpload = p.StatusPPIDID >= StatusId.DataSiap && p.StatusPPIDID != StatusId.Selesai;
+            }
+            @if (canUpload || dokTugas.Any())
+            {
+                <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-center text-sm">📤</div>
+                        <p class="font-bold text-gray-800 text-sm">Laporan / Tugas Final</p>
+                    </div>
+                    @if (dokTugas.Any())
+                    {
+                        <div class="space-y-1.5 mb-3">
+                            @foreach (var f in dokTugas)
+                            {
+                                <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                    <span class="text-indigo-500 text-sm flex-shrink-0">📎</span>
+                                    <p class="text-xs text-indigo-700 flex-1 truncate font-medium">@f.NamaDokumenPPID</p>
+                                    <a href="@f.UploadDokumenPPID" target="_blank"
+                                       class="text-[10px] text-indigo-500 hover:underline flex-shrink-0">Lihat</a>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (canUpload)
+                    {
+                        <a asp-action="UploadTugas" asp-controller="Home" asp-route-id="@p.PermohonanPPIDID"
+                           class="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2.5 rounded-xl transition-colors">
+                            📤 @(dokTugas.Any() ? "Unggah Revisi Laporan" : "Unggah Laporan")
+                        </a>
+                    }
+                </div>
+            } *@
+
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Butuh Bantuan?</p>
+                <p class="text-xs text-gray-500 leading-relaxed mb-2">
+                    Hubungi loket PPID DLH di <strong>(+62) 852-1243-6339</strong> pada jam kerja (Senin–Jumat, 08.00–16.00 WIB).
+                </p>
+                <p class="text-[11px] text-gray-400">Simpan nomor <span class="font-mono font-bold">@p.NoPermohonan</span> untuk referensi.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ══ REALTIME POLLING ══ *@
+<script>
+(function () {
+    'use strict';
+    const noPermohonan   = @Json.Serialize(p.NoPermohonan);
+    const initStatusId   = @(p.StatusPPIDID?.ToString() ?? "null");
+    const initChangedAt  = @Json.Serialize(Model.LastChangedAt.ToString("O"));
+    let lastChangedAt = initChangedAt;
+    let pollTimer     = null;
+    let failCount     = 0;
+    const MAX_FAIL    = 5;
+    const INTERVAL_MS = 30_000;
+
+    function showBanner(message) {
+        const banner = document.getElementById('update-banner');
+        if (banner) {
+            if (message) banner.textContent = message;
+            banner.classList.remove('hidden');
+            document.body.style.paddingTop = banner.offsetHeight + 'px';
+        }
+    }
+
+    function setIndicator(active, text) {
+        const el = document.getElementById('refresh-indicator');
+        if (!el) return;
+        const dot = el.querySelector('span:first-child');
+        const lbl = el.querySelector('span:last-child');
+        if (dot) dot.className = active ? 'w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse' : 'w-1.5 h-1.5 rounded-full bg-gray-300';
+        if (lbl) lbl.textContent = text;
+    }
+
+    async function poll() {
+        try {
+            const resp = await fetch('/cek-status?no=' + encodeURIComponent(noPermohonan), { cache: 'no-store' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            if (!data) return;
+            failCount = 0;
+            if (data.statusId !== initStatusId) {
+                showBanner('🔔 Status permohonan telah diperbarui — klik untuk memuat ulang');
+                clearInterval(pollTimer);
+                setIndicator(false, 'Status berubah — klik banner untuk refresh');
+                return;
+            }
+            if (data.lastChangedAt !== lastChangedAt && data.lastChangedAt > lastChangedAt) {
+                lastChangedAt = data.lastChangedAt;
+                showBanner('📋 Informasi jadwal / PIC telah diperbarui — klik untuk melihat');
+                setIndicator(true, 'Ada pembaruan — klik banner');
+                return;
+            }
+        } catch (err) {
+            failCount++;
+            if (failCount >= MAX_FAIL) { clearInterval(pollTimer); setIndicator(false, 'Koneksi terputus — muat ulang halaman'); }
+            else { setIndicator(false, `Coba lagi... (${failCount}/${MAX_FAIL})`); }
+        }
+    }
+
+    const isFinished = initStatusId === @StatusId.Selesai;
+    if (!isFinished) {
+        setTimeout(() => { poll(); pollTimer = setInterval(poll, INTERVAL_MS); }, 5_000);
+    } else {
+        setIndicator(false, 'Permohonan selesai');
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { clearInterval(pollTimer); }
+        else if (!isFinished) { poll(); pollTimer = setInterval(poll, INTERVAL_MS); }
+    });
+})();
+</script>

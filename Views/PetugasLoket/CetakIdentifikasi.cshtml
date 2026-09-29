@@ -1,0 +1,398 @@
+
+@model PermohonanPPID
+@{
+    Layout = null;
+
+    var pr   = Model.Pribadi;
+    var ppid = pr?.PribadiPPID;
+
+    // ── Konteks pemohon ───────────────────────────────────────────────────
+    bool isMahasiswa = Model.KategoriPemohon == "Mahasiswa";
+
+    var tujuan = Model.TujuanPermohonan ?? "";
+
+    // ── Flag checkbox MAHASISWA ───────────────────────────────────────────
+    bool isTugasMK   = tujuan.Contains("Tugas Mata Kuliah");
+    bool isTugasAkh  = tujuan.Contains("Tugas Akhir");
+    bool isSkripsi   = tujuan.Contains("Skripsi");
+    bool isTesis     = tujuan.Contains("Tesis");
+    bool isDisertasi = tujuan.Contains("Disertasi");
+
+    // ── Flag checkbox LSM / Non-Mahasiswa ─────────────────────────────────
+    bool isKajianKebijakan    = tujuan.Contains("Kajian Kebijakan");
+    bool isAdvokasiLingkungan = tujuan.Contains("Advokasi Lingkungan");
+    bool isLaporanProgram     = tujuan.Contains("Laporan Program");
+    bool isPublikasiMedia     = tujuan.Contains("Publikasi");
+    bool isKerjaSama          = tujuan.Contains("Kerja Sama");
+    bool isKepHukum           = tujuan.Contains("Hukum");
+
+    // ── "Lainnya" — sisa yang tidak cocok dengan salah satu pilihan ───────
+    bool isLainnyaMhs = isMahasiswa &&
+        !isTugasMK && !isTugasAkh && !isSkripsi && !isTesis && !isDisertasi &&
+        !string.IsNullOrEmpty(tujuan);
+
+    bool isLainnyaLsm = !isMahasiswa &&
+        !isKajianKebijakan && !isAdvokasiLingkungan && !isLaporanProgram &&
+        !isPublikasiMedia && !isKerjaSama && !isKepHukum &&
+        !string.IsNullOrEmpty(tujuan);
+
+    bool isLainnya = isMahasiswa ? isLainnyaMhs : isLainnyaLsm;
+
+    // ── Label adaptif ─────────────────────────────────────────────────────
+    string labelJudul         = isMahasiswa ? "Judul Penelitian"           : "Judul / Topik Permohonan";
+    string labelLatarBelakang = isMahasiswa ? "Latar Belakang Penelitian"  : "Latar Belakang";
+    string labelLembaga       = isMahasiswa ? "Lembaga Pendidikan"         : "Lembaga / Organisasi";
+    string labelPosisi        = isMahasiswa ? "Pekerjaan / Jabatan"        : "Jabatan / Posisi";
+
+    // ── Detail keperluan ──────────────────────────────────────────────────
+    var detailObs  = Model.Detail.FirstOrDefault(d => d.KeperluanID == KeperluanId.Observasi)?.DetailKeperluan  ?? "-";
+    var detailData = Model.Detail.FirstOrDefault(d => d.KeperluanID == KeperluanId.PermintaanData)?.DetailKeperluan ?? "-";
+    var detailWaw  = Model.Detail.FirstOrDefault(d => d.KeperluanID == KeperluanId.Wawancara)?.DetailKeperluan  ?? "-";
+
+    var alamatLengkap = string.Join(", ", new[] {
+        pr?.Alamat,
+        !string.IsNullOrEmpty(pr?.RT) ? $"RT {pr!.RT}" : null,
+        !string.IsNullOrEmpty(pr?.RW) ? $"RW {pr!.RW}" : null,
+        pr?.NamaKelurahan, pr?.NamaKecamatan, pr?.NamaKabupaten
+    }.Where(s => !string.IsNullOrEmpty(s)));
+
+    var tanggalCetak     = DateTime.Now.ToString("dd MMMM yyyy");
+    var namaPemohon      = pr?.Nama ?? "";
+    var namaPemohonTitle = string.IsNullOrWhiteSpace(namaPemohon)
+        ? "................................"
+        : System.Globalization.CultureInfo.InvariantCulture
+            .TextInfo.ToTitleCase(namaPemohon.ToLower());
+
+    // ── Prefix routing toolbar ────────────────────────────────────────────
+    string prefix = ViewData["Prefix"] as string ?? "";
+    if (string.IsNullOrEmpty(prefix))
+    {
+        var reqPath = Context.Request.Path.Value ?? "";
+        prefix = reqPath.StartsWith("/loket-umum", StringComparison.OrdinalIgnoreCase)
+            ? "loket-umum"
+            : "petugas-loket";
+    }
+
+    string urlUploadTTD = $"/{prefix}/upload-ttd/{Model.PermohonanPPIDID}";
+    string urlKembali   = $"/{prefix}";
+}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Formulir Identifikasi Awal — @Model.NoPermohonan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 10pt;
+            line-height: 1.45;
+            color: #000;
+            background: #dde3ed;
+        }
+
+        /* ─── toolbar (screen only) ─── */
+        .toolbar {
+            background: linear-gradient(135deg, #001e55, #002d7a);
+            padding: 0 20px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,.3);
+        }
+        .tbrand {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+        .tbrand code {
+            font-family: monospace;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.18);
+            padding: 2px 7px;
+            border-radius: 5px;
+            margin-left: 6px;
+        }
+        .tbtn {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            padding: 6px 15px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            transition: opacity .15s;
+        }
+        .tbtn:hover { opacity: .85; }
+        .tp { background: #f59e0b; color: #1c1917; }
+        .tn { background: #059669; color: #fff; }
+        .tb { background: rgba(255,255,255,.10); color: rgba(255,255,255,.75); border: 1px solid rgba(255,255,255,.18); }
+
+        .page-wrap { padding: 24px; display: flex; justify-content: center; }
+
+        .paper {
+            background: #fff;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 18mm 13mm 22mm;
+            box-shadow: 0 6px 28px rgba(0,0,0,.14);
+            border-radius: 3px;
+            overflow: hidden;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        h1.ftitle { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: center; letter-spacing: .03em; margin-bottom: 3px; }
+        .fsub { font-size: 9pt; text-align: center; color: #333; margin-bottom: 8px; font-family: Arial; }
+        hr.thick { border: none; border-top: 2px solid #000; margin-bottom: 10px; }
+
+        .nop-box { display: table; width: 100%; border-collapse: collapse; border: 2px solid #1B3B6F; border-radius: 5px; overflow: hidden; margin-bottom: 11px; background: #eef3ff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .nop-box > div { display: table-cell; vertical-align: middle; }
+        .nop-lbl { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 7.5pt; font-weight: 700; color: #1B3B6F; text-transform: uppercase; letter-spacing: .05em; line-height: 1.5; white-space: nowrap; padding: 8px 10px; width: 1%; }
+        .nop-div { width: 1px; background: #a0b8d8; padding: 0; }
+        .nop-val { text-align: center; padding: 6px 12px; }
+        .nop-val-text { font-family: 'Courier New', Courier, monospace; font-size: 14pt; font-weight: 900; letter-spacing: .07em; color: #1B3B6F; word-break: break-all; }
+        .nop-note { width: 125px; padding: 8px 10px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 7pt; color: #374151; line-height: 1.5; }
+
+        table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 2px; }
+        table.dtbl col.c-lbl { width: 162px; }
+        table.dtbl col.c-sep { width: 14px; }
+        table.dtbl col.c-val { width: auto; }
+        table.dtbl td { vertical-align: top; padding: 2px 0; word-break: break-word; overflow-wrap: break-word; }
+        .lbl { font-weight: bold; }
+        .sep { text-align: center; }
+        .ln { display: block; border-bottom: 1px solid #000; min-height: 18px; padding-bottom: 2px; }
+        .ln-tall { display: block; border-bottom: 1px solid #000; min-height: 38px; padding-bottom: 2px; white-space: pre-wrap; }
+
+        .cbrow { margin: 6px 0 2px; line-height: 1.7; }
+        .cb { display: inline-block; width: 11px; height: 11px; border: 1.5px solid #000; margin-right: 3px; vertical-align: middle; text-align: center; font-size: 8.5pt; line-height: 10px; }
+        .cb.on::after { content: '✓'; font-weight: bold; }
+        .cbl { margin-right: 16px; vertical-align: middle; }
+
+        .stitle { font-weight: bold; margin: 8px 0 2px; }
+
+        table.dtbl2 { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 2px; }
+        table.dtbl2 col.c2-lbl { width: 195px; }
+        table.dtbl2 col.c2-sep { width: 14px; }
+        table.dtbl2 col.c2-val { width: auto; }
+        table.dtbl2 td { vertical-align: top; padding: 2px 0; word-break: break-word; overflow-wrap: break-word; }
+        .dlbl { font-style: italic; font-size: 9.5pt; }
+        .hint { font-style: normal; font-size: 7.5pt; color: #555; display: block; }
+        .ln-det { display: block; border-bottom: 1px solid #000; min-height: 36px; padding-bottom: 2px; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; }
+
+        .sign-row { display: flex; margin-top: 18px; }
+        .sign-col { flex: 1; text-align: right; padding: 0 6px; font-size: 10pt; }
+        .sign-space { height: 56px; }
+        .sign-name { display: inline-block; font-weight: bold; border-top: 1px solid #000; padding-top: 3px; min-width: 145px; }
+        .sign-sub { font-size: 8.5pt; margin-top: 2px; }
+
+        .nb { font-size: 8pt; color: #333; margin-top: 11px; line-height: 1.5; }
+
+        @@media print {
+            body { background: #fff; }
+            .toolbar { display: none !important; }
+            .page-wrap { padding: 0; }
+            .paper { width: 100%; min-height: unset; padding: 10mm 16mm 10mm 20mm; box-shadow: none; border-radius: 0; }
+            @@page { size: A4 portrait; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+@* ── TOOLBAR ─────────────────────────────────────────────────────────────── *@
+<div class="toolbar">
+    <p class="tbrand">
+        🖨️ Formulir Identifikasi Awal
+        <code>@Model.NoPermohonan</code>
+    </p>
+    <button class="tbtn tp" onclick="window.print()">🖨️ Cetak</button>
+    <a class="tbtn tn" href="@urlUploadTTD">✍️ Upload TTD →</a>
+    <a class="tbtn tb" href="@urlKembali">← Kembali</a>
+</div>
+
+@* ── PAPER ────────────────────────────────────────────────────────────────── *@
+<div class="page-wrap">
+  <div class="paper">
+
+    <h1 class="ftitle">Formulir Identifikasi Awal</h1>
+    <p class="fsub">
+        Tanggal:&nbsp;<strong>@(Model.TanggalPermohonan?.ToString("dd MMMM yyyy") ?? "—")</strong>
+    </p>
+    <hr class="thick" />
+
+    @* ── Nomor Permohonan ─── *@
+    <div class="nop-box">
+        <div class="nop-lbl">Nomor<br />Permohonan</div>
+        <div class="nop-div"></div>
+        <div class="nop-val">
+            <span class="nop-val-text">@(Model.NoPermohonan ?? "—")</span>
+        </div>
+        <div class="nop-div"></div>
+        <div class="nop-note">
+            Simpan formulir ini. Nomor di atas diperlukan untuk melacak status permohonan secara <em>online</em>.
+        </div>
+    </div>
+
+    @* ── Data Pemohon ─── *@
+    <table class="dtbl">
+        <colgroup><col class="c-lbl" /><col class="c-sep" /><col class="c-val" /></colgroup>
+        <tbody>
+
+            <tr><td class="lbl">Nama</td><td class="sep">:</td><td><span class="ln">@(pr?.Nama ?? "")</span></td></tr>
+            <tr><td class="lbl">NIK</td><td class="sep">:</td><td><span class="ln" style="font-family:monospace;letter-spacing:.05em;">@(pr?.NIK ?? "")</span></td></tr>
+            <tr><td class="lbl">No. Telepon</td><td class="sep">:</td><td><span class="ln">@(pr?.Telepon ?? "")</span></td></tr>
+            <tr><td class="lbl">Alamat</td><td class="sep">:</td><td><span class="ln">@alamatLengkap</span></td></tr>
+            <tr><td class="lbl">No. Surat Permohonan Izin dari Kampus</td><td class="sep">:</td><td><span class="ln"><strong>@(Model.NoSuratPermohonan ?? "—")</strong>
+
+
+            @* ── Baris institusi/lembaga — berbeda untuk Mahasiswa vs LSM ── *@
+            @if (isMahasiswa)
+            {
+                <tr><td class="lbl">Universitas / Sekolah</td><td class="sep">:</td><td><span class="ln">@(ppid?.Lembaga ?? "")</span></td></tr>
+                <tr><td class="lbl">Fakultas</td><td class="sep">:</td><td><span class="ln">@(ppid?.Fakultas ?? "")</span></td></tr>
+                <tr><td class="lbl">Program Studi</td><td class="sep">:</td><td><span class="ln">@(ppid?.Jurusan ?? "")</span></td></tr>
+            }
+            else
+            {
+                <tr><td class="lbl">Lembaga / Organisasi</td><td class="sep">:</td><td><span class="ln">@(ppid?.Lembaga ?? "")</span></td></tr>
+                <tr><td class="lbl">Jabatan / Posisi</td><td class="sep">:</td><td><span class="ln">@(ppid?.Pekerjaan ?? "")</span></td></tr>
+            }
+
+            @* ── Label judul & latar belakang adaptif ── *@
+            <tr><td class="lbl">@labelJudul</td><td class="sep">:</td><td><span class="ln">@(Model.JudulPenelitian ?? "")</span></td></tr>
+            <tr><td class="lbl">@labelLatarBelakang</td><td class="sep">:</td><td><span class="ln-tall">@(Model.LatarBelakang ?? "")</span></td></tr>
+        </tbody>
+    </table>
+
+    @* ════════════════════════════════════════════════════════════════════
+       BAGIAN TUJUAN — seluruhnya berbeda antara Mahasiswa dan LSM
+       ════════════════════════════════════════════════════════════════════ *@
+    @if (isMahasiswa)
+    {
+        @* ── Mahasiswa: pilihan tujuan akademik ── *@
+        <div class="cbrow">
+            <span class="cb @(isTugasMK   ? "on" : "")"></span><span class="cbl">Tugas Mata Kuliah</span>
+            <span class="cb @(isTugasAkh  ? "on" : "")"></span><span class="cbl">Pembuatan Tugas Akhir</span>
+            <span class="cb @(isSkripsi   ? "on" : "")"></span><span class="cbl">Pembuatan Skripsi</span>
+        </div>
+        <div class="cbrow" style="margin-bottom:4px;">
+            <span class="cb @(isTesis     ? "on" : "")"></span><span class="cbl">Pembuatan Tesis</span>
+            <span class="cb @(isDisertasi ? "on" : "")"></span><span class="cbl">Pembuatan Disertasi</span>
+        </div>
+        <div class="cbrow" style="margin-bottom:7px;">
+            <span class="cb @(isLainnya ? "on" : "")"></span>
+            <span class="cbl">Lainnya, sebutkan :</span>
+            <span style="display:inline-block;border-bottom:1px solid #000;min-width:210px;padding-bottom:1px;vertical-align:bottom;">@(isLainnya ? tujuan : "")</span>
+        </div>
+    }
+    else
+    {
+        @* ── LSM / Non-Mahasiswa: pilihan tujuan kelembagaan ── *@
+        <div class="cbrow">
+            <span class="cb @(isKajianKebijakan    ? "on" : "")"></span><span class="cbl">Penelitian dan Kajian Kebijakan</span>
+            <span class="cb @(isAdvokasiLingkungan ? "on" : "")"></span><span class="cbl">Pemantauan dan Advokasi Lingkungan</span>
+        </div>
+        <div class="cbrow">
+            <span class="cb @(isLaporanProgram  ? "on" : "")"></span><span class="cbl">Penyusunan Laporan Program</span>
+            <span class="cb @(isPublikasiMedia  ? "on" : "")"></span><span class="cbl">Keperluan Publikasi / Media</span>
+        </div>
+        <div class="cbrow" style="margin-bottom:4px;">
+            <span class="cb @(isKerjaSama ? "on" : "")"></span><span class="cbl">Kerja Sama Kelembagaan</span>
+            <span class="cb @(isKepHukum  ? "on" : "")"></span><span class="cbl">Keperluan Hukum / Litigasi</span>
+        </div>
+        <div class="cbrow" style="margin-bottom:7px;">
+            <span class="cb @(isLainnya ? "on" : "")"></span>
+            <span class="cbl">Lainnya, sebutkan :</span>
+            <span style="display:inline-block;border-bottom:1px solid #000;min-width:210px;padding-bottom:1px;vertical-align:bottom;">@(isLainnya ? tujuan : "")</span>
+        </div>
+    }
+
+    @* ── Keperluan (sama untuk semua) ── *@
+    <div class="stitle">Keperluan <span style="font-weight:normal;font-style:italic;">(pilihan bisa lebih dari satu)</span></div>
+    <div class="cbrow" style="margin-bottom:7px;">
+        <span class="cb @(Model.IsObservasi      ? "on" : "")"></span><span class="cbl">Observasi</span>
+        <span class="cb @(Model.IsPermintaanData ? "on" : "")"></span><span class="cbl">Permintaan Data</span>
+        <span class="cb @(Model.IsWawancara      ? "on" : "")"></span><span class="cbl">Wawancara</span>
+    </div>
+
+    @* ── Detail keperluan — label adaptif ── *@
+    <table class="dtbl2">
+        <colgroup><col class="c2-lbl" /><col class="c2-sep" /><col class="c2-val" /></colgroup>
+        <tbody>
+            <tr>
+                <td class="dlbl">
+                    @(isMahasiswa ? "Deskripsi observasi yang akan dilakukan" : "Lokasi / objek yang akan diobservasi")
+                    <span class="hint">(tulis "–" jika tidak dibutuhkan)</span>
+                </td>
+                <td class="sep">:</td><td><span class="ln-det">@detailObs</span></td>
+            </tr>
+            <tr>
+                <td class="dlbl">
+                    @(isMahasiswa ? "Data yang diperlukan" : "Data / dokumen yang dibutuhkan")
+                    <span class="hint">(tulis "–" jika tidak dibutuhkan)</span>
+                </td>
+                <td class="sep">:</td><td><span class="ln-det">@detailData</span></td>
+            </tr>
+            <tr>
+                <td class="dlbl">
+                    @(isMahasiswa ? "Materi Wawancara" : "Topik dan narasumber wawancara")
+                    <span class="hint">(tulis "–" jika tidak dibutuhkan)</span>
+                </td>
+                <td class="sep">:</td><td><span class="ln-det">@detailWaw</span></td>
+            </tr>
+            <tr>
+                <td class="dlbl">Unit Kerja yang berkaitan<span class="hint">(Diisi Subkelompok Kepegawaian)</span></td>
+                <td class="sep">:</td><td><span class="ln-det">@(Model.NamaBidang ?? "")</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    @* ── Tanda tangan ── *@
+    <div class="sign-row">
+        @* di bawah ini belum dipakai *@
+        @* <div class="sign-col">
+            <div>Mengetahui,</div>
+            <div><strong>Ketua Subkelompok Kepegawaian</strong></div>
+            <div class="sign-space"></div>
+            <div><span class="sign-name">Mathew Musa H</span></div>
+            <div class="sign-sub">NIP 198411182010011019</div>
+        </div> *@
+        <div class="sign-col">
+            <div>Jakarta, @tanggalCetak</div>
+            <div>@(isMahasiswa ? "Pemohon," : "Perwakilan,")</div>
+            <div class="sign-space"></div>
+            <div><span class="sign-name">@namaPemohonTitle</span></div>
+            <div class="sign-sub">NIK @(pr?.NIK ?? "................................")</div>
+            @if (!isMahasiswa && !string.IsNullOrWhiteSpace(ppid?.Lembaga))
+            {
+                <div class="sign-sub" style="margin-top:2px;font-style:italic;">@ppid!.Lembaga</div>
+            }
+        </div>
+    </div>
+
+    <p class="nb">
+        <strong>NB:</strong> Formulir ini dibuat untuk mengetahui kebutuhan pemohon sebagai pendukung
+        pembuatan surat @(isMahasiswa ? "pemberian izin" : "izin / rekomendasi"). <strong>Simpan nomor permohonan yang tertera di atas —
+        nomor tersebut diperlukan untuk melacak status secara <em>online</em> di portal PPID.</strong>
+    </p>
+
+  </div>
+</div>
+
+</body>
+</html>

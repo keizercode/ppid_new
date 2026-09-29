@@ -1,0 +1,646 @@
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/js/docx-preview.min.js"></script>
+
+<!-- ── Backdrop ──────────────────────────────────────────────────────────── -->
+<div id="doc-viewer-backdrop"
+     class="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm hidden items-center justify-center"
+     onclick="docViewerClose()">
+
+    <div id="doc-viewer-modal"
+             class="relative bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden
+                    w-[98vw] max-w-[1800px]"
+             style="height:96vh"
+         onclick="event.stopPropagation()">
+
+        <!-- ── Header ── -->
+        <div class="flex items-center justify-between gap-3 px-4 py-2
+                    border-b border-gray-200 bg-[#f7f7f7] flex-shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span id="dv-icon" class="text-base flex-shrink-0">📄</span>
+                <p id="dv-filename"
+                   class="text-sm font-medium text-gray-800 truncate"
+                   style="max-width:70vw">—</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button id="dv-download-btn" type="button"
+                        onclick="docViewerDownload()"
+                        class="inline-flex items-center gap-1.5 text-xs font-medium
+                               bg-white hover:bg-gray-100 border border-gray-300
+                               text-gray-700 px-3 py-1.5 rounded-md transition-colors">
+                    ⬇ Unduh
+                </button>
+                <button type="button" onclick="docViewerClose()"
+                        class="w-8 h-8 flex items-center justify-center rounded-md
+                              hover:bg-gray-200 text-gray-500
+                              font-bold transition-colors text-base">✕</button>
+            </div>
+        </div>
+
+        <!-- ── PDF Toolbar (hidden by default) ── -->
+        <div id="dv-toolbar"
+             class="hidden items-center justify-between gap-3 px-4 py-2
+                   border-b border-gray-200 bg-[#f3f3f3] flex-shrink-0 flex-wrap">
+            <div class="flex items-center gap-2">
+
+                <!-- Sidebar / TOC -->
+                <button id="dv-outline-toggle"
+                        type="button"
+                        onclick="docViewerToggleOutline()"
+                        title="Daftar isi"
+                        class="w-8 h-8 flex items-center justify-center rounded-md border border-gray-300
+                               bg-white hover:bg-gray-100 text-gray-700 transition-colors">
+                    ☰
+                </button>
+                <div class="flex items-center gap-1 text-xs text-gray-600 select-none">
+                    <input id="dv-page-input" type="number" min="1" value="1"
+                          class="w-12 text-center text-xs font-semibold border border-gray-300
+                                 rounded-md py-1 focus:outline-none focus:border-blue-400"
+                           onkeydown="if(event.key==='Enter'){docViewerGoToPage(this.value);this.blur();}"
+                           onblur="docViewerGoToPage(this.value)" />
+                    <span class="text-gray-400">/</span>
+                    <span id="dv-total-pages" class="font-semibold text-gray-700 w-5 text-center">—</span>
+                </div>
+
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button type="button" onclick="docViewerZoom(-1)"
+                       class="w-7 h-7 flex items-center justify-center rounded-md border border-gray-300
+                              bg-white hover:bg-gray-100 text-gray-700 font-bold text-base transition-colors">−</button>
+                <span id="dv-zoom-label"
+                      class="text-xs font-bold text-gray-600 w-12 text-center select-none">—</span>
+                <button type="button" onclick="docViewerZoom(1)"
+                        class="w-7 h-7 flex items-center justify-center rounded-md border border-gray-300
+                               bg-white hover:bg-gray-100 text-gray-700 font-bold text-base transition-colors">+</button>
+                <button type="button" onclick="docViewerFitWidth()" title="Sesuaikan lebar"
+                        class="h-7 px-2.5 flex items-center justify-center rounded-md border border-gray-300
+                               bg-white hover:bg-gray-100 text-gray-600 text-xs font-semibold transition-colors">Fit</button>
+            </div>
+        </div>
+
+
+        <!-- ── Body ── -->
+         <div class="flex-1 min-h-0 relative overflow-hidden bg-[#cfcfcf]">
+
+            <!-- Loader -->
+            <div id="dv-loader"
+                 class="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-[#cfcfcf]">
+                <div class="w-9 h-9 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="text-xs text-gray-500 font-medium">Memuat dokumen…</p>
+            </div>
+
+            <!-- PDF scroll container + canvas -->
+            <div id="dv-pdf-wrap"
+                 class="absolute inset-0 hidden overflow-hidden bg-[#cfcfcf]"
+                 style="display:none">
+
+                <!-- Sidebar -->
+                <aside id="dv-outline"
+                       class="hidden absolute left-0 top-0 bottom-0 z-20
+                              w-[280px] bg-white border-r border-gray-300
+                              overflow-auto shadow-xl">
+
+                    <div class="sticky top-0 bg-white border-b border-gray-200
+                                px-4 py-3 flex items-center justify-between">
+                        <p class="text-sm font-semibold text-gray-700">
+                            Daftar Isi
+                        </p>
+
+                        <button type="button"
+                                onclick="docViewerToggleOutline(false)"
+                                class="w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div id="dv-outline-list"
+                         class="py-2"></div>
+                </aside>
+
+                <!-- Scroll Area -->
+                <div id="dv-scroll-wrap"
+                     class="absolute inset-0 overflow-auto">
+
+                    <div id="dv-pages"
+                         class="flex flex-col items-center gap-6 py-6 px-6">
+                    </div>
+                 </div>
+             </div>
+
+
+            <!-- Image viewer -->
+            <div id="dv-img-wrap"
+                 class="absolute inset-0 hidden overflow-auto"
+                 style="display:none">
+                <div class="flex items-center justify-center min-h-full p-4">
+                    <img id="dv-img" src="" alt=""
+                         class="max-w-full object-contain rounded shadow-xl"
+                         style="max-height:78vh"
+
+                         />
+                </div>
+            </div>
+
+<!-- ── Office Online Viewer ── -->
+<div id="dv-office-wrap"
+     class="absolute inset-0"
+     style="display:none">
+    <iframe id="dv-office-frame"
+        src=""
+        allowfullscreen
+        style="width:100%;height:100%;border:none;display:block">
+    </iframe>
+</div>
+
+            <!-- Unsupported -->
+            <div id="dv-unsupported"
+                 class="absolute inset-0 hidden flex-col items-center justify-center gap-4 p-6 text-center">
+                <div class="w-16 h-16 bg-white rounded-2xl shadow flex items-center justify-center text-3xl">📎</div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-700 mb-1">Pratinjau tidak tersedia</p>
+                    <p class="text-xs text-gray-400 max-w-xs leading-relaxed">
+                        Format file ini tidak dapat ditampilkan langsung.<br>
+                        Gunakan tombol <strong>Unduh</strong> untuk menyimpan file.
+                    </p>
+                </div>
+                <button type="button" onclick="docViewerDownload()"
+                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700
+                               text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors">
+                    ⬇ Unduh File
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+<style>
+    #doc-viewer-backdrop.dv-open {
+        display: flex;
+        animation: dvBackdropIn .18s ease both;
+    }
+    #doc-viewer-backdrop.dv-open #doc-viewer-modal {
+        animation: dvModalIn .22s cubic-bezier(.34,1.4,.64,1) both;
+    }
+    @@keyframes dvBackdropIn { from { opacity:0 }                                       to { opacity:1 } }
+    @@keyframes dvModalIn    { from { opacity:0; transform:translateY(16px) scale(.96) } to { opacity:1; transform:none } }
+
+    #dv-page-input::-webkit-inner-spin-button,
+    #dv-page-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    #dv-page-input { -moz-appearance: textfield; }
+</style>
+
+<script>
+(function () {
+    'use strict';
+
+    /* ── Konstanta ──────────────────────────────────────────────────────── */
+    const WORKER_SRC  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
+    const IMG_EXT     = /\.(png|jpe?g|gif|webp|svg|bmp)(\?|$)/i;
+    const OFFICE_EXT  = /\.(docx?|pptx?|xlsx?)(\?|$)/i;
+
+    let _pdf          = null;
+    let _page         = 1;
+    let _total        = 0;
+    let _zoomIdx      = 2;
+    let _fitScale     = 1.0;
+    let _useFit       = true;
+    let _busy         = false;
+    let _url          = '';
+    let _name         = '';
+    let _renderedAll  = false;
+    let _outlineOpen  = false;
+    let _officeUrl    = '';
+
+    /* ── Helpers DOM ────────────────────────────────────────────────────── */
+    const el    = id  => document.getElementById(id);
+    const show  = id  => { const e = el(id); if (e) { e.classList.remove('hidden'); e.style.display = ''; } };
+    const hide  = id  => { const e = el(id); if (e) { e.classList.add('hidden');    e.style.display = 'none'; } };
+    const showF = id  => { const e = el(id); if (e) { e.classList.remove('hidden'); e.style.display = 'flex'; } };
+
+    function getPathname(url) {
+        try { return new URL(url, location.href).pathname; } catch { return url; }
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    function resetState() {
+        _pdf   = null;
+        _page  = 1;
+        _total = 0;
+        _useFit = true;
+        _busy   = false;
+
+        hide('dv-toolbar');
+        hide('dv-pdf-wrap');
+        hide('dv-img-wrap');
+        hide('dv-unsupported');
+        show('dv-loader');
+
+        const pages = el('dv-pages');
+        if (pages) pages.innerHTML = '';
+
+        const outline = el('dv-outline-list');
+        if (outline) outline.innerHTML = '';
+        const img = el('dv-img');
+        if (img) { img.onload = null; img.onerror = null; img.src = ''; }
+        const ow = el('dv-office-wrap');
+        if (ow) ow.style.display = 'none';
+        const of_ = el('dv-office-frame');
+        if (of_) of_.src = '';
+        _officeUrl = '';
+        const ob = el('dv-office-bar');
+        if (ob) ob.remove();
+
+
+        const tp = el('dv-total-pages'); if (tp) tp.textContent = '—';
+        const pi = el('dv-page-input');  if (pi) { pi.value = '1'; pi.max = '1'; }
+        const zl = el('dv-zoom-label'); if (zl) zl.textContent = '—';
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Entry point (ganti seluruh fungsi previewFile lama)
+    ───────────────────────────────────────────────────────────────────────── */
+    window.previewFile = function (url, nama) {
+        if (!url) return;
+        _url  = url;
+        _name = nama || 'dokumen';
+
+        resetState();
+        el('dv-filename').textContent = _name;
+        el('dv-icon').textContent     = '📄';
+        el('doc-viewer-backdrop').classList.add('dv-open');
+        document.body.style.overflow = 'hidden';
+
+        const path = getPathname(url);
+
+        if (IMG_EXT.test(path)) {
+            el('dv-icon').textContent = '🖼️';
+            show('dv-img-wrap');
+            const imgEl = el('dv-img');
+            imgEl.onload  = () => docViewerHideLoader();
+            imgEl.onerror = () => docViewerShowUnsupported();
+            imgEl.src = url;
+
+        } else if (OFFICE_EXT.test(path)) {
+            el('dv-icon').textContent = '📝';
+           loadOfficeOnline(url);
+
+        } else {
+            el('dv-icon').textContent = '📑';
+            show('dv-pdf-wrap');
+            loadPdf(url);
+        }
+    };
+
+
+/* ── Office Online Viewer ────────────────────────────────────────────────── */
+function loadOfficeOnline(url) {
+    const absoluteUrl = new URL(url, location.href).href;
+    const viewerUrl   = 'https://view.officeapps.live.com/op/embed.aspx?src='
+                        + encodeURIComponent(absoluteUrl);
+
+    const frame = el('dv-office-frame');
+    const wrap  = el('dv-office-wrap');
+    if (!frame || !wrap) { docViewerShowUnsupported(); return; }
+
+    frame.src          = viewerUrl;
+    wrap.style.display = 'block';
+
+    frame.onload  = () => docViewerHideLoader();
+    frame.onerror = () => docViewerShowUnsupported();
+}
+
+    /* ── PDF.js: load ───────────────────────────────────────────────────── */
+    async function loadPdf(url) {
+        try {
+            if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js tidak tersedia');
+            pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_SRC;
+
+            const task = pdfjsLib.getDocument({
+                url,
+                cMapPacked: true,
+                withCredentials: false
+            });
+            _pdf   = await task.promise;
+            _total = _pdf.numPages;
+            _page  = 1;
+
+            el('dv-total-pages').textContent = _total;
+            el('dv-page-input').max = String(_total);
+
+            // Tampilkan toolbar setelah berhasil
+            const tb = el('dv-toolbar');
+            if (tb) { tb.classList.remove('hidden'); tb.style.display = 'flex'; }
+
+            _useFit = true;
+            await renderAllPages();
+            await loadPdfOutline();
+            docViewerHideLoader();
+
+        } catch (err) {
+            console.error('[DocViewer] PDF gagal dimuat:', err);
+            docViewerShowUnsupported();
+        }
+    }
+
+    /* ── PDF.js: render halaman ─────────────────────────────────────────── */
+    async function renderAllPages() {
+        if (!_pdf || _busy) return;
+        _busy = true;
+
+        try {
+            const wrap  = el('dv-scroll-wrap');
+            const pages = el('dv-pages');
+
+           pages.innerHTML = '';
+
+            const firstPage = await _pdf.getPage(1);
+            const firstVP   = firstPage.getViewport({ scale: 1 });
+
+            const wrapW     = wrap.clientWidth - 120;
+            _fitScale       = wrapW / firstVP.width;
+
+            if (_useFit) {
+                let closest = 0;
+                ZOOM_LEVELS.forEach((z, i) => {
+                    if (Math.abs(z - _fitScale) < Math.abs(ZOOM_LEVELS[closest] - _fitScale)) {
+                        closest = i;
+                    }
+                });
+                _zoomIdx = closest;
+            }
+
+            const scale = _useFit ? _fitScale : ZOOM_LEVELS[_zoomIdx];
+            const dpr   = window.devicePixelRatio || 1;
+
+            for (let i = 1; i <= _total; i++) {
+                const page = await _pdf.getPage(i);
+                const vp   = page.getViewport({ scale });
+
+                const pageWrap = document.createElement('div');
+                pageWrap.id = 'dv-page-' + i;
+                pageWrap.className = 'relative';
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'bg-white shadow-[0_1px_8px_rgba(0,0,0,.22)]';
+
+                const ctx = canvas.getContext('2d');
+
+                canvas.width  = vp.width * dpr;
+                canvas.height = vp.height * dpr;
+                canvas.style.width  = vp.width + 'px';
+                canvas.style.height = vp.height + 'px';
+
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                pageWrap.appendChild(canvas);
+                pages.appendChild(pageWrap);
+
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: vp
+                }).promise;
+            }
+
+            _renderedAll = true;
+
+            const pct = Math.round(scale * 100);
+            el('dv-zoom-label').textContent = pct + '%';
+            el('dv-page-input').value = '1';
+
+        } catch (err) {
+            console.error('[DocViewer] Render PDF error', err);
+        } finally {
+            _busy = false;
+        }
+    }
+
+    /* ── Navigasi halaman ───────────────────────────────────────────────── */
+    window.docViewerChangePage = function (delta) {
+        const next = _page + delta;
+        if (next < 1 || next > _total || _busy) return;
+        _page = next;
+        scrollToPage(_page);
+    };
+
+    window.docViewerGoToPage = function (val) {
+        const n = parseInt(val, 10);
+        if (isNaN(n) || n < 1 || n > _total || _busy) {
+            const pi = el('dv-page-input'); if (pi) pi.value = String(_page);
+            return;
+        }
+        _page = n;
+        scrollToPage(_page);
+    };
+
+    /* ── Zoom ───────────────────────────────────────────────────────────── */
+    window.docViewerZoom = function (dir) {
+        _useFit  = false;
+        _zoomIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, _zoomIdx + dir));
+        renderAllPages();
+    };
+
+    window.docViewerFitWidth = function () {
+        _useFit = true;
+        renderAllPages();
+    };
+
+    function scrollToPage(pageNumber) {
+        const target = el('dv-page-' + pageNumber);
+        const wrap   = el('dv-scroll-wrap');
+
+        if (!target || !wrap) return;
+
+        wrap.scrollTo({
+            top: target.offsetTop - 20,
+            behavior: 'smooth'
+        });
+
+        _page = pageNumber;
+
+        const pi = el('dv-page-input');
+        if (pi) pi.value = String(pageNumber);
+    }
+
+    /* ── Detect current visible page ───────────────────────────────────── */
+    function setupScrollSpy() {
+        const wrap = el('dv-scroll-wrap');
+        if (!wrap) return;
+
+        wrap.addEventListener('scroll', () => {
+            if (!_renderedAll) return;
+
+            for (let i = 1; i <= _total; i++) {
+                const page = el('dv-page-' + i);
+                if (!page) continue;
+
+                const top = page.offsetTop - wrap.scrollTop;
+
+                if (top >= -200 && top <= 300) {
+                    _page = i;
+
+                    const pi = el('dv-page-input');
+                    if (pi) pi.value = String(i);
+
+                    break;
+                }
+            }
+        });
+    }
+
+    /* ── PDF Outline / TOC ─────────────────────────────────────────────── */
+    async function loadPdfOutline() {
+        try {
+            const outline = await _pdf.getOutline();
+            const list    = el('dv-outline-list');
+
+            if (!list) return;
+
+            list.innerHTML = '';
+
+            if (!outline || !outline.length) {
+                list.innerHTML = `
+                    <div class="px-4 py-6 text-xs text-gray-400 text-center">
+                        Dokumen tidak memiliki daftar isi.
+                    </div>`;
+                return;
+            }
+
+            const buildItems = async(items, level = 0) => {
+                for (const item of items) {
+                    let pageNumber = null;
+
+                    try {
+                        if (item.dest) {
+                            const dest = await _pdf.getDestination(item.dest);
+                            if (dest) {
+                                const ref = dest[0];
+                                pageNumber = (await _pdf.getPageIndex(ref)) + 1;
+                            }
+                        }
+                    } catch {}
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className =
+                        'w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700 transition-colors';
+
+                    btn.style.paddingLeft = (16 + (level * 18)) + 'px';
+
+                    btn.innerHTML = `
+                        <div class="truncate">${item.title || 'Untitled'}</div>
+                    `;
+
+                    if (pageNumber) {
+                        btn.onclick = () => scrollToPage(pageNumber);
+                    }
+
+                    list.appendChild(btn);
+
+                    if (item.items?.length) {
+                        await buildItems(item.items, level + 1);
+                    }
+                }
+            };
+
+            await buildItems(outline);
+
+        } catch (err) {
+            console.warn('[DocViewer] Outline gagal dimuat', err);
+        }
+    }
+
+    window.docViewerToggleOutline = function (force) {
+        const outline = el('dv-outline');
+        const scroll  = el('dv-scroll-wrap');
+
+        if (!outline || !scroll) return;
+
+        _outlineOpen = typeof force === 'boolean'
+            ? force
+            : !_outlineOpen;
+
+        if (_outlineOpen) {
+            outline.classList.remove('hidden');
+            scroll.style.left = '280px';
+        } else {
+            outline.classList.add('hidden');
+            scroll.style.left = '0';
+        }
+    };
+
+    /* ── Download (fetch → blob, fallback: new tab) ─────────────────────── */
+    window.docViewerDownload = async function () {
+        if (!_url) return;
+        const btn = el('dv-download-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '…'; }
+        try {
+            const res  = await fetch(_url, { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob  = await res.blob();
+            const bUrl  = URL.createObjectURL(blob);
+            const a     = Object.assign(document.createElement('a'), { href: bUrl, download: _name });
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(bUrl), 30_000);
+        } catch {
+            // CORS atau jaringan gagal → buka tab baru
+            window.open(_url, '_blank', 'noopener,noreferrer');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '⬇ Unduh'; }
+        }
+    };
+
+    /* ── Helpers ────────────────────────────────────────────────────────── */
+    window.docViewerHideLoader = function () { hide('dv-loader'); };
+
+    window.docViewerShowUnsupported = function () {
+        hide('dv-loader');
+        hide('dv-pdf-wrap');
+        hide('dv-img-wrap');
+
+        const ow = el('dv-office-wrap');
+        if (ow) ow.style.display = 'none';
+
+        const tb = el('dv-toolbar');
+        if (tb) {
+            tb.classList.add('hidden');
+            tb.style.display = 'none';
+        }
+
+        showF('dv-unsupported');
+    };
+
+    /* ── Tutup modal ────────────────────────────────────────────────────── */
+    window.docViewerClose = function () {
+        const backdrop = el('doc-viewer-backdrop');
+        if (!backdrop?.classList.contains('dv-open')) return;
+
+        backdrop.style.animation = 'dvBackdropIn .15s ease reverse both';
+        setTimeout(() => {
+            backdrop.classList.remove('dv-open');
+            backdrop.style.animation = '';
+            document.body.style.overflow = '';
+            resetState();
+            _url  = '';
+            _name = '';
+        }, 140);
+    };
+
+    /* ── Keyboard shortcuts ─────────────────────────────────────────────── */
+    document.addEventListener('keydown', e => {
+
+        if (!el('doc-viewer-backdrop')?.classList.contains('dv-open')) return;
+        switch (e.key) {
+            case 'Escape':     docViewerClose();         break;
+        }
+    });
+
+setupScrollSpy();
+})();
+</script>

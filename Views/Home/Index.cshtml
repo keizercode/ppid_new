@@ -1,0 +1,532 @@
+@model LacakViewModel
+@{
+    ViewData["Title"] = "PPID Dinas Lingkungan Hidup DKI Jakarta";
+    var daftarOnlineUrl = ViewData["DaftarOnlineUrl"] as string ?? "https://dev2.dinaslhdki.id/daftar-online";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" />
+}
+
+<!-- ══ TICKER ══ -->
+<partial name="Partials/_PublicNavBar" />
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-blob-1"></div>
+    <div class="hero-blob-2"></div>
+
+
+<!-- ── Dekorasi Jakarta ── -->
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1775804215/kota_dyz54h.png"
+     alt="" aria-hidden="true" class="hero-deco hero-city"/>
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1775808897/monas_t096ko.svg"
+     alt="" aria-hidden="true" class="hero-deco hero-monas"/>
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1782908983/Bundaran_HI_t0iaeb.png"
+     alt="" aria-hidden="true" class="hero-deco hero-bundaran"/>
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1782960822/ondel-nobg_don8js.png"
+     alt="" aria-hidden="true" class="hero-deco hero-ondel hero-ondel-l"/>
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1782960822/ondel-nobg_don8js.png"
+     alt="" aria-hidden="true" class="hero-deco hero-ondel hero-ondel-r"/>
+<img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1782910038/pancoran-nobg_tcqd2z.png"
+     alt="" aria-hidden="true" class="hero-deco hero-pancoran"/>
+
+    <div class="hero-inner">
+        <!-- LEFT -->
+        <div>
+            <div class="hero-badge au au-1">
+                <span class="live-dot"></span>
+                Layanan Aktif &nbsp;·&nbsp; PPID DLH Jakarta
+            </div>
+            <h1 class="au au-2">
+                Transparansi<br/>
+                <span class="gradient-text">Informasi Publik</span>
+            </h1>
+            <p class="au au-3">
+                Pejabat Pengelola Informasi dan Dokumentasi (PPID) Dinas Lingkungan Hidup
+                Provinsi DKI Jakarta melayani permohonan data dan informasi lingkungan secara
+                cepat, terbuka, dan akuntabel.
+            </p>
+            <div class="hero-actions au au-4">
+                <a href="@daftarOnlineUrl" class="btn-primary" target="_blank" rel="noopener noreferrer">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Link Daftar Online
+                </a>
+                <a href="#lacak" class="btn-secondary">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                    </svg>
+                    Lacak Status
+                </a>
+                <a href="#tentang" class="btn-secondary">
+                    Pelajari Lebih Lanjut
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- RIGHT CARDS -->
+        <div class="hero-cards au au-3">
+            @{
+                var hc = new[]{
+                    new{I="<path stroke-linecap='round' stroke-linejoin='round' d='M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'/>",T="Ajukan Permohonan",D="Datang ke loket PPID DLH dengan membawa kelengkapan berkas persyaratan."},
+                    new{I="<path stroke-linecap='round' stroke-linejoin='round' d='M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z'/>",T="Lacak Status",D="Pantau perkembangan permohonan secara langsung melalui portal ini."},
+                    new{I="<path stroke-linecap='round' stroke-linejoin='round' d='M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z'/>",T="Informasi Publik",D="Akses dokumen dan data lingkungan hidup DKI Jakarta yang tersedia."},
+                    new{I="<path stroke-linecap='round' stroke-linejoin='round' d='M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z'/>",T="Penilaian Layanan",D="Berikan penilaian atas kualitas layanan yang telah Anda terima."},
+                };
+            }
+            @foreach(var c in hc){
+                <div class="hero-card">
+                    <div class="hero-card-icon">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">@Html.Raw(c.I)</svg>
+                    </div>
+                    <h3>@c.T</h3>
+                    <p>@c.D</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (ViewData["ScrollTo"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('@ViewData["ScrollTo"]');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    </script>
+}
+</section>
+
+
+<!-- ══ STAT BAR ══ -->
+<section class="stat-bar-section" style="padding:0 0 72px">
+    <div class="stat-bar">
+        <div class="stat-bar-inner">
+            @{
+                var stats = new[]{
+                    new{V="UU No. 14/2008",S="Dasar Hukum",Path="<path stroke-linecap='round' stroke-linejoin='round' d='M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z'/>"},
+                    new{V="Senin – Jumat",S="Hari Layanan",Path="<path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5'/>"},
+                    new{V="≤ 10 Hari Kerja",S="Waktu Respons",Path="<path stroke-linecap='round' stroke-linejoin='round' d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'/>"},
+                    new{V="Tanpa Biaya",S="Gratis Sepenuhnya",Path="<path stroke-linecap='round' stroke-linejoin='round' d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/>"},
+                };
+            }
+            @foreach(var s in stats){
+                <div class="stat-item">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">@Html.Raw(s.Path)</svg>
+                    <strong>@s.V</strong>
+                    <span>@s.S</span>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- ══ TENTANG PPID ══ -->
+<section id="tentang" class="section" style="background:var(--bg)">
+    <div class="section-inner">
+        <div class="about-grid">
+            <!-- LEFT -->
+            <div>
+                <div class="section-badge"><span class="badge-dot"></span>Tentang PPID</div>
+                <h2 class="section-title">Pejabat Pengelola Informasi<br/>dan Dokumentasi (PPID)</h2>
+                <div class="blockquote-wrap" style="margin-bottom:18px">
+                    <div class="accent-bar"></div>
+                    <p class="blockquote-text">
+                        Berdasarkan <strong>Undang-Undang Nomor 14 Tahun 2008</strong> tentang Keterbukaan Informasi Publik,
+                        setiap Badan Publik wajib menetapkan PPID yang bertanggung jawab dalam penyimpanan,
+                        pendokumentasian, penyediaan, dan pelayanan informasi kepada publik secara cepat dan tepat waktu.
+                    </p>
+                </div>
+                <p style="font-size:14.5px;color:var(--muted);line-height:1.75;margin-bottom:24px">
+                    PPID Dinas Lingkungan Hidup Provinsi DKI Jakarta berkomitmen mewujudkan tata kelola pemerintahan
+                    yang baik melalui transparansi dan akuntabilitas informasi publik di bidang lingkungan hidup.
+                </p>
+                <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Landasan Hukum</p>
+                @foreach(var l in new[]{"UU No. 14 Tahun 2008 — Keterbukaan Informasi Publik","PP No. 61 Tahun 2010 — Pelaksanaan UU KIP","Permendagri No. 3 Tahun 2017 — Pedoman PPID Daerah","Pergub DKI Jakarta No. 175 Tahun 2016"}){
+                    <div class="law-pill">@l</div>
+                }
+            </div>
+            <!-- RIGHT -->
+            <div>
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="ic ic-oren">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+                            </svg>
+                        </div>
+                        <p style="font-weight:700;font-size:14.5px">Visi PPID DLH Jakarta</p>
+                    </div>
+                    <p style="font-size:14px;color:var(--muted);line-height:1.75;font-style:italic;border-left:3px solid var(--oren);padding-left:14px">
+                        "Jakarta kota maju, lestari dan berbudaya yang warganya terlibat dalam mewujudkan
+                        keberadaban, keadilan, dan kesejahteraan bagi semua."
+                    </p>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="ic ic-green">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z"/>
+                            </svg>
+                        </div>
+                        <p style="font-weight:700;font-size:14.5px">Fungsi &amp; Tugas PPID</p>
+                    </div>
+                    @{var funcs=new[]{"Melaksanakan kebijakan layanan informasi yang ditetapkan","Melakukan klasifikasi dan verifikasi informasi publik","Koordinasi pengumpulan bahan informasi dan dokumentasi","Menyediakan & memberikan pelayanan informasi kepada publik","Menjadi media informasi yang mudah diakses masyarakat","Menyampaikan laporan pengelolaan informasi secara berkala"};}
+                    @foreach(var (f,i) in funcs.Select((f,i)=>(f,i+1))){
+                        <div class="func-item">
+                            <div class="func-num">@i</div>
+                            <p class="func-text">@f</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ══ ALUR PERMOHONAN ══ -->
+<section id="alur" class="section steps-bg">
+    <div class="section-inner">
+        <div style="text-align:center;margin-bottom:52px">
+            <div class="section-badge-oren" style="margin:0 auto 12px;width:fit-content"><span class="badge-dot-oren"></span>Mekanisme Pengajuan</div>
+            <h2 class="section-title" style="margin:0 auto 10px">Alur Permohonan Informasi</h2>
+            <p class="section-sub" style="margin:0 auto;text-align:center">Ikuti langkah berikut untuk mengajukan permohonan data &amp; informasi di PPID DLH Jakarta</p>
+        </div>
+        <div class="steps-grid">
+            @{
+
+                var steps=new[]{
+                    new{N="1",I="<path stroke-linecap='round' stroke-linejoin='round' d='M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z'/>",T="Pengajuan Permohonan",D=$"Permohonan dapat dilakukan secara online maupun offline.<br><br><strong>Online</strong> — daftar melalui sistem pendaftaran digital DLH Jakarta.<br><a href=\"{daftarOnlineUrl}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"mt-2 inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg hover:bg-emerald-100\"><svg width=\"14\" height=\"14\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25\"/></svg>Link Daftar Online</a><br><br><strong>Offline</strong> — datang langsung ke loket pelayanan dan membawa dokumen yang dipersyaratkan sesuai kategori pemohon.",G="Online · Offline"},
+                    new{N="2",I="<path stroke-linecap='round' stroke-linejoin='round' d='M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z'/>",T="Identifikasi &amp; Pendaftaran",D="Petugas memverifikasi berkas dan mendaftarkan permohonan. Nomor unik diterbitkan untuk melacak status.",G="± 15 menit proses"},
+                    new{N="3",I="<path stroke-linecap='round' stroke-linejoin='round' d='M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10'/>",T="Tanda Tangan Formulir",D="Tanda tangani formulir identifikasi awal. Nomor permohonan tercetak di formulir — simpan dengan baik.",G="Simpan nomor Anda!"},
+                    new{N="4",I="<path stroke-linecap='round' stroke-linejoin='round' d='M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3'/>",T="Pantau &amp; Unduh Data",D="Gunakan nomor permohonan untuk cek status secara daring. Unduh data saat status berubah menjadi 'Data Siap'.",G="Pantau secara langsung"},
+                };
+            }
+            @foreach(var s in steps){
+                <div class="step-wrap">
+                    <div class="step-num">@s.N</div>
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">@Html.Raw(s.I)</svg>
+                        </div>
+                        <h3>@Html.Raw(s.T)</h3>
+                        <p>@Html.Raw(s.D)</p>
+                        <span class="step-tag">@s.G</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- ══ PERSYARATAN ══ -->
+<section id="syarat" class="section req-bg">
+    <div class="section-inner">
+        <div style="text-align:center;margin-bottom:44px">
+            <div class="section-badge" style="margin:0 auto 12px;width:fit-content"><span class="badge-dot"></span>Persyaratan</div>
+            <h2 class="section-title" style="margin:0 auto 10px">Dokumen yang Diperlukan</h2>
+            <p class="section-sub" style="margin:0 auto;text-align:center">Siapkan berkas berikut sebelum datang ke loket PPID DLH Jakarta</p>
+        </div>
+        <div class="req-grid">
+
+            <!-- Mahasiswa -->
+            <div class="req-card">
+                <div class="req-card-head req-card-head-blue">
+                    <div class="req-card-head-inner">
+                        <div class="req-ic req-ic-blue">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="req-head-title req-head-title-blue">Mahasiswa / Pelajar</p>
+                            <p class="req-head-sub req-head-sub-blue">3 dokumen wajib · <a href="@daftarOnlineUrl" class="underline" target="_blank" rel="noopener noreferrer">Daftar online</a></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="req-body">
+                    @{
+    var docsStudent = new (string Label, string? DownloadUrl, string? DownloadTitle)[]
+    {
+        ("Fotokopi KTP",                    null,                                               null),
+        ("Surat Permohonan Izin dari Kampus", null,                                             null),
+        ("Proposal Penelitian Awal",
+         "~/files/Proposal_Penelitian_Awal_PPID_DLH.docx",
+         "Unduh Template Proposal"),
+    };
+}
+@foreach(var d in docsStudent){
+    <div class="req-item">
+        <div class="req-check req-check-blue">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+        </div>
+        <span style="flex:1">@d.Label</span>
+        @if(d.DownloadUrl != null){
+            <a href="https://docs.google.com/document/d/1EO6HZ7URhTmW9ikDCI6qDIbxKA0vqls8bhFUTEFrYts/export?format=docx"
+            download="Proposal_Penelitian_Awal_PPID_DLH.docx"
+            title="Unduh Template Proposal"
+            class="req-download-btn">
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+                Unduh .docx
+            </a>
+        }
+    </div>
+}
+                </div>
+            </div>
+
+            <!-- LSM -->
+            <div class="req-card">
+                <div class="req-card-head req-card-head-green">
+                    <div class="req-card-head-inner">
+                        <div class="req-ic req-ic-green">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="req-head-title req-head-title-green">LSM / Organisasi</p>
+                            <p class="req-head-sub req-head-sub-green">3 dokumen wajib</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="req-body">
+
+                    @foreach(var d in new[]{"Fotokopi KTP Pimpinan","Akta Notaris Lembaga/Organisasi","Surat Permohonan Informasi"}){
+                        <div class="req-item">
+                            <div class="req-check req-check-green">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                </svg>
+                            </div>
+                            @d
+                        </div>
+                    }
+                    <a href="https://ppid.jakarta.go.id/permohonan-informasi" target="_blank" rel="noopener"
+                       class="mt-4 inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg hover:bg-emerald-100">
+                        Pengajuan online LSM → Portal PPID Jakarta
+                    </a>
+                </div>
+            </div>
+
+            <!-- Umum -->
+            <div class="req-card">
+                <div class="req-card-head req-card-head-oren">
+                    <div class="req-card-head-inner">
+                        <div class="req-ic req-ic-oren">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="req-head-title req-head-title-oren">Masyarakat Umum</p>
+                            <p class="req-head-sub req-head-sub-oren">Via portal PPID daring</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="req-body">
+                    <p style="font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:16px">
+                        Permohonan masyarakat umum dilayani melalui portal resmi PPID Pemprov DKI Jakarta.
+                        Tidak perlu datang ke kantor — semua dapat dilakukan secara digital.
+                    </p>
+                    <a href="https://ppid.jakarta.go.id/permohonan-informasi" target="_blank" class="btn-green" style="width:100%;justify-content:center">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+                        </svg>
+                        Kunjungi Portal PPID Jakarta
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ══ LACAK PERMOHONAN ══ -->
+<section id="lacak" class="section lacak-bg">
+    <div class="section-inner">
+        <div style="text-align:center;margin-bottom:40px">
+            <div class="section-badge-oren" style="margin:0 auto 12px;width:fit-content"><span class="badge-dot-oren"></span>Status Permohonan</div>
+            <h2 class="section-title" style="margin:0 auto 10px">Lacak Permohonan Anda</h2>
+            <p class="section-sub" style="margin:0 auto;text-align:center">Masukkan nomor permohonan yang tertera pada formulir identifikasi awal untuk melihat status terkini.</p>
+        </div>
+
+        <div class="lacak-card">
+                    <div class="error-box" id="lacak-error-box" style="@(TempData["Error"] != null ? "" : "display:none")">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                <p id="lacak-error-msg">@Html.Raw(TempData["Error"] as string ?? "")</p>
+            </div>
+
+            <form asp-action="LacakPost" asp-controller="Home" method="post" id="lacak-form">
+                @Html.AntiForgeryToken()
+                <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Nomor Permohonan</label>
+                <div class="search-row">
+                    <div class="search-wrap">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                        <input asp-for="NoPermohonan"
+                            class="search-input"
+                            placeholder="Contoh: MHS687592/PPID/III/2026"
+                            autocomplete="off"
+                            oninput="this.value=this.value.toUpperCase()" />
+                    </div>
+                    <button type="submit" id="lacak-submit-btn" class="btn-primary" style="white-space:nowrap;flex-shrink:0">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                        </svg>
+                        Cek Status
+                    </button>
+                </div>
+                <span asp-validation-for="NoPermohonan" class="field-error"></span>
+
+                <div class="format-box">
+                    <p class="format-label">Format Nomor Permohonan</p>
+                    <div class="format-grid">
+                        <div class="format-item format-blue">
+                            <p>Mahasiswa / Pelajar</p>
+                            <code>MHS687592/PPID/III/2026</code>
+                            @* di bawah ini belum perlu *@
+                            @* <small>MHS + 6 digit / PPID / Bulan Romawi / Tahun</small> *@
+                        </div>
+                        <div class="format-item format-green">
+                            <p>LSM / Organisasi / Umum</p>
+                            <code>UMM423187/PPID/III/2026</code>
+                            @* di bawah ini belum perlu *@
+                            @* <small>UMM + 6 digit / PPID / Bulan Romawi / Tahun</small> *@
+                        </div>
+                    </div>
+                    <p style="font-size:12px;color:var(--muted)">Nomor ini tertera pada formulir identifikasi yang diberikan petugas loket saat mendaftar.</p>
+                </div>
+            </form>
+
+            <div class="lacak-tips">
+                <div class="lacak-tip lacak-tip-green">
+                    <div class="lacak-tip-icon lacak-tip-icon-green">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="lacak-tip-title lacak-tip-title-green">Simpan Formulir Anda</p>
+                        <p class="lacak-tip-body lacak-tip-body-green">Nomor permohonan tercetak di formulir identifikasi yang ditandatangani di loket. Simpan salinannya.</p>
+                    </div>
+                </div>
+                <div class="lacak-tip lacak-tip-blue">
+                    <div class="lacak-tip-icon lacak-tip-icon-blue">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="lacak-tip-title lacak-tip-title-blue">Butuh Bantuan?</p>
+                        <p class="lacak-tip-body lacak-tip-body-blue">Hubungi loket PPID di <strong>(+62) 852-1243-6339</strong> pada jam kerja untuk bantuan lebih lanjut.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+(function () {
+    var form     = document.getElementById('lacak-form');
+    var input    = form ? form.querySelector('[name="NoPermohonan"]') : null;
+    var errBox   = document.getElementById('lacak-error-box');
+    var errMsg   = document.getElementById('lacak-error-msg');
+    var btn      = document.getElementById('lacak-submit-btn');
+    var origHtml = btn ? btn.innerHTML : '';
+
+    if (!form || !input || !errBox || !btn) return;
+
+    function showErr(msg) {
+        errMsg.textContent = msg;
+        errBox.style.removeProperty('display');
+        errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function hideErr() { errBox.style.display = 'none'; }
+
+    input.addEventListener('input', hideErr);
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        hideErr();
+
+        var val = input.value.trim().toUpperCase();
+        input.value = val;
+
+        if (!val) {
+            showErr('Nomor permohonan wajib diisi.');
+            input.focus();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Memeriksa\u2026';
+
+        var navigating = false;
+        try {
+            var res  = await fetch('/cek-status?no=' + encodeURIComponent(val));
+            var data = await res.json();
+            if (data === null) {
+                showErr('Nomor permohonan tidak ditemukan. Pastikan nomor diketik persis seperti yang tertera di formulir Anda.');
+                input.focus();
+            } else {
+                navigating = true;
+                form.submit(); // bypass listener → POST → LacakPost → Detail
+            }
+        } catch (_) {
+            navigating = true;
+            form.submit(); // fallback: biarkan server handle
+        } finally {
+            if (!navigating) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    });
+}());
+</script>
+</section>
+
+
+<!-- ══ CTA BANNER ══ -->
+<section class="cta-section">
+    <div class="cta-wrap">
+        <div class="cta-inner">
+            <p class="sub">Punya Pertanyaan?</p>
+            <h2>Hubungi Petugas PPID DLH Jakarta</h2>
+            <p>Kami siap membantu permohonan informasi publik Anda di bidang lingkungan hidup DKI Jakarta.</p>
+            <div class="cta-btns">
+                <a href="mailto:ppid.dlh@jakarta.go.id" class="cta-btn-outline">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+                    </svg>
+                    ppid.dlh@jakarta.go.id
+                </a>
+
+                <a href="https://ppid.jakarta.go.id" target="_blank" class="cta-btn-fill">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/>
+                    </svg>
+                    ppid.jakarta.go.id
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+

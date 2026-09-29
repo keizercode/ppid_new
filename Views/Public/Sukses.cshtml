@@ -1,0 +1,35 @@
+@{
+    Layout = "_LayoutPublicForm";
+    ViewData["Title"] = "Pendaftaran Berhasil";
+    ViewData["FormTitle"] = "Pendaftaran Online";
+    var no = ViewData["NoPermohonan"] as string ?? "";
+}
+
+<partial name="Partials/_PublicFormHeader" />
+
+<div class="max-w-lg mx-auto text-center bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+    <div class="text-5xl mb-4">✅</div>
+    <h1 class="text-xl font-extrabold text-gray-900 mb-2">Permohonan Terdaftar</h1>
+    <p class="text-sm text-gray-500 mb-5 leading-relaxed">
+        Data permohonan Anda telah masuk antrean Loket Kepegawaian.
+        Simpan nomor permohonan berikut untuk melacak status.
+    </p>
+    @if (!string.IsNullOrEmpty(no))
+    {
+        <p class="font-mono text-base font-bold bg-emerald-50 border border-emerald-200 text-emerald-900 px-5 py-3 rounded-xl mb-6">@no</p>
+    }
+    <div class="flex gap-3 justify-center flex-wrap">
+        <a href="/#lacak"
+           class="inline-flex items-center px-5 py-2.5 rounded-xl bg-[#002d7a] text-white text-sm font-bold hover:bg-blue-900 transition-colors">
+            Lacak Status
+        </a>
+        <a href="/"
+           class="inline-flex items-center px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+            Kembali ke Beranda
+        </a>
+    </div>
+    <p class="text-xs text-gray-400 mt-6 leading-relaxed">
+        Tahap selanjutnya mengikuti alur yang sama dengan permohonan via Loket Kepegawaian:
+        verifikasi petugas, penerbitan surat izin, disposisi ke unit terkait, hingga pemrosesan data.
+    </p>
+</div>

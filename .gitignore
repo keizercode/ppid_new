@@ -1,0 +1,26 @@
+# Production config
+appsettings.Production.json
+appsettings.Development.json
+
+# Certificates
+*.pfx
+*.pem
+*.key
+
+# Build files
+bin/
+obj/
+publish/
+wwwroot/lib/
+wwwroot/css/app.css
+wwwroot/uploads/
+
+# User-specific
+*.user
+*.suo
+*.db
+.vscode
+
+node_modules/
+.env
+.env.production

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" href="~/images/jaya-raya.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+    rel="stylesheet" />
+
+    @RenderSection("Styles", required: false)
+</head>
+
+<body class="min-h-screen flex flex-col antialiased">
+
+    @* ── Success alert (non-homepage pages, e.g. Kuesioner redirect) ── *@
+    @if (TempData["Success"] != null && !ViewData.ContainsKey("HideGlobalAlert"))
+    {
+        <div class="alert-slide bg-emerald-50 border-b border-emerald-200">
+            <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-2.5">
+                <svg class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                     stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <p class="text-emerald-800 text-sm font-medium">@Html.Raw(TempData["Success"])</p>
+            </div>
+        </div>
+    }
+
+    <main class="flex-1">
+        @RenderBody()
+    </main>
+
+    <!-- ══ SITE FOOTER ══ -->
+    <footer style="background:#0D1F3C; color:rgba(255,255,255,.45);">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+
+                <!-- Brand -->
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <img src="https://res.cloudinary.com/dmcvht1vr/image/upload/v1778220475/Logo_PPID_opsi_2_n485vz.png"
+                            alt="Logo PPID" class="h-10 object-contain" onerror="this.style.display='none'" />
+                        <div>
+                            <p class="text-white font-bold text-sm leading-tight">PPID DLH Jakarta</p>
+                            <p style="color:rgba(255,255,255,.4)" class="text-[11px]">Dinas Lingkungan Hidup</p>
+                        </div>
+                    </div>
+                    <p style="color:rgba(255,255,255,.4)" class="text-xs leading-relaxed">
+                        Pejabat Pengelola Informasi dan Dokumentasi Dinas Lingkungan Hidup Provinsi DKI Jakarta.
+                        Melayani permohonan informasi publik bidang lingkungan hidup secara transparan dan akuntabel.
+                    </p>
+                </div>
+
+                <!-- Layanan -->
+                <div>
+                    <p class="text-white font-bold text-xs uppercase tracking-widest mb-4">Layanan</p>
+                    <ul class="space-y-2">
+                        @foreach (var l in new[]{
+                            ("Lacak Permohonan", "#lacak"),
+                            ("Alur Permohonan", "#alur"),
+                            ("Tentang PPID", "#tentang"),
+                            ("Portal PPID Jakarta", "https://ppid.jakarta.go.id"),
+                        })
+                        {
+                            <li>
+                                <a href="@l.Item2" style="color:rgba(255,255,255,.45)"
+                                   class="text-xs hover:text-white transition-colors">@l.Item1</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <!-- Kontak -->
+                <div>
+                    <p class="text-white font-bold text-xs uppercase tracking-widest mb-4">Kontak</p>
+                    <ul class="space-y-2 text-xs" style="color:rgba(255,255,255,.45)">
+                        <li>📍 Jl. Mandala V No. 67, Cililitan, Jakarta Timur</li>
+                        <li>📞 (+62) 852-1243-6339</li>
+                        <li>📧 ppid.dlh@jakarta.go.id</li>
+                        <li>🕐 Senin – Jumat, 08.00 – 16.00 WIB</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom bar -->
+            <div class="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
+                 style="border-color:rgba(255,255,255,.08)">
+                <p class="text-xs" style="color:rgba(255,255,255,.3)">
+                    &copy; @DateTime.Now.Year · PPID Dinas Lingkungan Hidup Provinsi DKI Jakarta
+                </p>
+                @* Belum diperlukan di bawah ini *@
+                @* <a href="/auth/login" class="text-xs font-medium transition-colors"
+                style="color:rgba(255,255,255,.3)">
+                    Masuk sebagai Petugas →
+                </a> *@
+            </div>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+
+</html>

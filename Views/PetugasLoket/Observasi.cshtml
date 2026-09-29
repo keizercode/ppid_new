@@ -1,0 +1,416 @@
+@model List<PermohonanPPID>
+@{
+    ViewData["Title"] = "Kelola Observasi";
+    ViewData["Role"]  = "Petugas Loket";
+    Layout = "_LayoutAdmin";
+    var q            = ViewData["Q"] as string;
+    var filterStatus = ViewData["FilterStatus"] as string;
+    var subTaskMap   = ViewData["SubTaskMap"] as Dictionary<Guid, SubTaskPPID> ?? new();
+    var today        = DateOnly.FromDateTime(DateTime.Today);
+    var in3Days      = today.AddDays(3);
+
+    int cntPending    = Model.Count(p => !subTaskMap.ContainsKey(p.PermohonanPPIDID) || subTaskMap[p.PermohonanPPIDID].IsPending);
+    int cntDijadwal   = Model.Count(p => subTaskMap.TryGetValue(p.PermohonanPPIDID, out var s) && s.IsInProgress);
+    int cntSelesai    = Model.Count(p => subTaskMap.TryGetValue(p.PermohonanPPIDID, out var s) && s.IsSelesai);
+    int cntDibatalkan = Model.Count(p => subTaskMap.TryGetValue(p.PermohonanPPIDID, out var s) && s.IsDibatalkan);
+
+    string StTaskCls(int? s) => (s ?? 0) switch {
+       SubTaskStatus.Selesai    => "st st--selesai",
+       SubTaskStatus.InProgress => "st st--obs",
+       SubTaskStatus.Dibatalkan => "st st--batal",
+       _                        => "st st--proses"
+    };
+    string StTaskDot(int? s) => (s ?? 0) switch {
+        SubTaskStatus.Selesai    => "#059669",
+        SubTaskStatus.InProgress => "#7c3aed",
+        SubTaskStatus.Dibatalkan => "#ef4444",
+        _                        => "#f59e0b"
+    };
+    string GetTaskLabel(SubTaskPPID? st)
+    {
+        if (st == null) return "Pending";
+
+        return st.StatusTask switch {
+            SubTaskStatus.Selesai    => "Selesai",
+            SubTaskStatus.InProgress => "Proses",
+            SubTaskStatus.Dibatalkan => "Batal",
+            _                        => "Pending"
+        };
+    }
+}
+
+<partial name="Partials/_FormStyles" />
+<partial name="Partials/_ActionMenu" />
+
+<!-- ══ TABS ══ -->
+<div class="flex flex-wrap gap-2 mb-4">
+    <a href="/petugas-loket"                 class="tab-btn">📋 Semua</a>
+    <a href="/petugas-loket/permintaan-data" class="tab-btn">📊 Permintaan Data</a>
+    <a href="/petugas-loket/wawancara"       class="tab-btn">🎤 Wawancara</a>
+    <a href="/petugas-loket/observasi"       class="tab-btn active">🔍 Observasi</a>
+</div>
+
+<!-- ══ STAT CHIPS ══ -->
+<div class="flex flex-wrap gap-2 mb-4">
+    <a href="/petugas-loket/observasi"
+       class="stat-chip @(filterStatus == null ? "active-all" : "")">
+        Semua <span class="chip-count">@Model.Count</span>
+    </a>
+    <a href="/petugas-loket/observasi?filterStatus=pending"
+       class="stat-chip @(filterStatus == "pending" ? "active-amber" : "")">
+        ⏳ Belum Dijadwalkan <span class="chip-count">@cntPending</span>
+    </a>
+    <a href="/petugas-loket/observasi?filterStatus=dijadwalkan"
+       class="stat-chip @(filterStatus == "dijadwalkan" ? "active-orange" : "")">
+        📅 Dijadwalkan <span class="chip-count">@cntDijadwal</span>
+    </a>
+    <a href="/petugas-loket/observasi?filterStatus=selesai"
+       class="stat-chip @(filterStatus == "selesai" ? "active-emerald" : "")">
+        ✓ Selesai <span class="chip-count">@cntSelesai</span>
+    </a>
+    @if (cntDibatalkan > 0)
+    {
+        <span class="stat-chip" style="opacity:.6">🚫 Dibatalkan <span class="chip-count">@cntDibatalkan</span></span>
+    }
+</div>
+
+<!-- ══ SEARCH ══ -->
+<div class="flex items-center gap-2 mb-4">
+    <form method="get" class="flex gap-2 flex-1">
+        @if (filterStatus != null) { <input type="hidden" name="filterStatus" value="@filterStatus" /> }
+        <input type="text" name="q" value="@q" placeholder="Cari nomor permohonan atau nama pemohon..."
+               class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        <button type="submit" class="bg-[#002d7a] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-xl">Cari</button>
+        @if (!string.IsNullOrEmpty(q) || filterStatus != null)
+        { <a href="/petugas-loket/observasi" class="border border-gray-200 text-gray-500 text-xs px-3 py-2 rounded-xl hover:bg-gray-50">Reset</a> }
+    </form>
+</div>
+
+<!-- ══ TABLE ══ -->
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="text-sm" style="width:100%;min-width:860px;">
+<colgroup>
+    <col class="w-[15%]" />
+    <col class="w-[17%]" />
+    <col class="w-[8%]"  />
+    <col class="w-[13%]" />
+    <col class="w-[14%]" />
+    <col class="w-[12%]" />
+    <col class="w-[12%]" />
+    <col class="w-[9%]"  />
+</colgroup>
+            <thead>
+                <tr class="border-b border-gray-100 bg-gray-50/50">
+                    <th class="col-th">No Permohonan</th>
+                    <th class="col-th">Nama Pemohon</th>
+                    <th class="col-th">Kategori</th>
+                    <th class="col-th">Jadwal Observasi</th>
+                    <th class="col-th">PIC / Lokasi</th>
+                    <th class="col-th">Status Sub-Tugas</th>
+                    <th class="col-th">Batas Waktu</th>
+                    <th class="col-th col-sticky-right" style="width:110px;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="px-6 py-16 text-center">
+                            <div class="max-w-xs mx-auto">
+                                <div class="w-16 h-16 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">🔍</div>
+                                <p class="text-sm font-semibold text-gray-600 mb-1">Tidak ada observasi ditemukan</p>
+                                @if (!string.IsNullOrEmpty(q) || filterStatus != null)
+                                {
+                                    <p class="text-xs text-gray-400 mb-3">Coba ubah kata kunci atau filter status.</p>
+                                    <a href="/petugas-loket/observasi" class="text-xs font-semibold text-orange-600 hover:underline">↩ Reset filter</a>
+                                }
+                                else
+                                { <p class="text-xs text-gray-400">Permohonan observasi akan muncul di sini.</p> }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        subTaskMap.TryGetValue(item.PermohonanPPIDID, out var st);
+                        var jadwal = item.Jadwal
+                            .Where(j => j.JenisJadwal == "Observasi" && j.IsAktif)
+                            .OrderByDescending(j => j.CreatedAt).FirstOrDefault();
+                        bool isJadwalDekat = jadwal?.Tanggal >= today && jadwal?.Tanggal <= in3Days;
+                        bool isOverdue     = item.IsOverdue;
+
+                        string badgeLbl = GetTaskLabel(st);
+
+                        string? primerHref = null; string? primerLabel = null; string primerColor = "";
+                        if (st == null || st.IsPending)
+                        { primerHref = $"/petugas-loket/jadwal-observasi/{item.PermohonanPPIDID}"; primerLabel = "Buat Jadwal"; primerColor = "blue"; }
+                        else if (st.IsInProgress)
+                        { primerHref = $"/petugas-loket/selesai-observasi/{item.PermohonanPPIDID}"; primerLabel = "Konfirmasi Selesai"; primerColor = "emerald"; }
+                        else if (st.IsDibatalkan)
+                        { primerHref = $"/petugas-loket/reopen-subtask/{item.PermohonanPPIDID}/{JenisTask.Observasi}"; primerLabel = "Buka Kembali"; primerColor = "violet"; }
+                        else
+                        { primerHref = $"/petugas-loket/subtasks/{item.PermohonanPPIDID}"; primerLabel = "Lihat Detail"; }
+
+                        <tr class="hover:bg-orange-50/30 transition-colors group @(isJadwalDekat ? "bg-orange-50/20" : isOverdue ? "bg-red-50/10" : "")">
+
+                            @* {{!-- ── No. Permohonan ── --}} *@
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-1.5">
+                                    @if (isJadwalDekat) { <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0"></span> }
+                                    else if (isOverdue)  { <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span> }
+                                    <div>
+                                        <span class="no-perm">@item.NoPermohonan</span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            @* {{!-- ── Nama Pemohon ── --}} *@
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-gray-800 text-sm">@item.Pribadi?.Nama</p>
+                                @if (!string.IsNullOrEmpty(item.NamaBidang))
+                                { <p class="text-[10px] text-gray-400 mt-0.5 truncate max-w-[160px]" title="@item.NamaBidang">📂 @item.NamaBidang</p> }
+                                @if (!string.IsNullOrEmpty(item.JudulPenelitian))
+                                { <p class="text-[10px] text-gray-400 truncate max-w-[160px]" title="@item.JudulPenelitian">📄 @item.JudulPenelitian</p> }
+                            </td>
+
+                            @* {{!-- ── Kategori ── --}} *@
+                            <td class="px-4 py-3">
+                                @if (item.KategoriPemohon == "Mahasiswa")
+                                {
+                                    <span class="kat-chip kat-mhs"><span class="kat-dot" style="background:#3b82f6"></span>Mahasiswa</span>
+                                }
+                                else
+                                {
+                                    <span class="kat-chip kat-lsm"><span class="kat-dot" style="background:#10b981"></span>LSM</span>
+                                }
+                            </td>
+
+                            @* {{!-- ── Jadwal ── --}} *@
+                            <td class="px-4 py-3">
+                                @if (jadwal?.Tanggal != null)
+                                {
+                                    int hariLagi = (jadwal.Tanggal.Value.ToDateTime(TimeOnly.MinValue) - DateTime.Today).Days;
+                                    <p class="text-sm font-semibold @(hariLagi == 0 ? "text-red-600" : hariLagi == 1 ? "text-amber-600" : "text-gray-700")">
+                                        @jadwal.Tanggal.Value.ToString("dd MMM yyyy")
+                                    </p>
+                                    <p class="text-[11px] text-gray-400">⏰ @jadwal.Waktu?.ToString("HH:mm") WIB</p>
+                                    @if (isJadwalDekat)
+                                    {
+                                        <span class="inline-block text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full mt-1">
+                                            ⚡ @(hariLagi == 0 ? "Hari ini!" : hariLagi == 1 ? "Besok" : $"{hariLagi} hari lagi")
+                                        </span>
+                                    }
+                                    @if (st?.RescheduleCount > 0)
+                                    { <p class="text-[10px] text-amber-500 mt-0.5">🔄 Reschedule @st.RescheduleCount×</p> }
+                                }
+                                else
+                                {
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                        ⏳ Pending
+                                    </span>
+                                }
+                            </td>
+
+                            @* {{!-- ── PIC / Lokasi ── --}} *@
+                            <td class="px-4 py-3">
+                                @if (!string.IsNullOrEmpty(st?.NamaPIC))
+                                {
+                                    <p class="text-xs font-semibold text-gray-700">@st.NamaPIC</p>
+                                    @if (!string.IsNullOrEmpty(st.TeleponPIC))
+                                    { <a href="tel:@st.TeleponPIC" class="text-[10px] text-blue-500 hover:underline">📞 @st.TeleponPIC</a> }
+                                    @if (!string.IsNullOrEmpty(st.LokasiDetail))
+                                    { <p class="text-[10px] text-gray-400 mt-0.5 break-all">@(st.LokasiJenis == "Online" ? "🌐" : "📍") @st.LokasiDetail</p> }
+                                    else if (!string.IsNullOrEmpty(st.LokasiJenis))
+                                    { <p class="text-[10px] text-gray-400 mt-0.5">@(st.LokasiJenis == "Online" ? "🌐 Online" : "📍 Offline")</p> }
+                                }
+                                else { <span class="text-xs text-gray-300 italic">—</span> }
+                            </td>
+
+                            @* {{!-- ── Status Sub-Tugas ── --}} *@
+                            <td class="px-4 py-3">
+                                <span class="@StTaskCls(st?.StatusTask)" style="white-space:normal;word-break:break-word">
+                                    <span class="st-dot" style="background:@StTaskDot(st?.StatusTask)"></span>
+                                    @badgeLbl
+                                </span>
+                                @if (st?.SelesaiAt != null)
+                                { <p class="text-[10px] text-gray-400 mt-0.5">@st.SelesaiAt.Value.ToLocalTime().ToString("dd MMM · HH:mm")</p> }
+                            </td>
+
+                            @* {{!-- ── Batas Waktu ── --}} *@
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @if (item.BatasWaktu.HasValue)
+                                {
+                                    <span class="text-xs @(isOverdue ? "text-red-600 font-semibold" : item.HariSisa <= 3 ? "text-amber-600" : "text-gray-500")">
+                                        @(isOverdue ? "⚠ " : "")@item.BatasWaktu.Value.ToString("dd MMM yyyy")
+                                    </span>
+                                    @if (isOverdue)
+                                    { <p class="text-[10px] text-red-400">Lewat @Math.Abs(item.HariSisa ?? 0) hari</p> }
+                                    else if (item.HariSisa.HasValue && item.HariSisa <= 3 && item.StatusPPIDID < StatusId.Selesai)
+                                    { <p class="text-[10px] text-amber-400">Sisa @item.HariSisa hari</p> }
+                                }
+                                else { <span class="text-gray-300 text-xs">—</span> }
+                            </td>
+
+                            @* {{!-- ── Aksi ── --}} *@
+                            <td class="px-4 py-3 col-sticky-right td-sticky-cell">
+                                <div class="action-cell">
+                                    @if (primerHref != null)
+                                    { <a href="@primerHref" class="btn-action-primary @primerColor">@primerLabel</a> }
+
+                                    <div class="action-more-wrap">
+                                        <button class="btn-action-more" onclick="toggleActionMenu(this)" type="button">⋯</button>
+                                        <div class="action-dropdown hidden">
+                                            <a href="/petugas-loket/subtasks/@item.PermohonanPPIDID" class="action-dd-item">⚙️ Kelola Sub-tugas</a>
+                                            <a href="/petugas-loket/detail/@item.PermohonanPPIDID" class="action-dd-item">📋 Detail Permohonan</a>
+                                            @if (item.StatusPPIDID == StatusId.DataSiap ||
+                                                item.StatusPPIDID == StatusId.FeedbackPemohon ||
+                                                item.StatusPPIDID == StatusId.Selesai)
+                                            {
+                                                <a href="/petugas-loket/feedback/@item.PermohonanPPIDID" class="action-dd-item">📋 Hasil Feedback</a>
+                                            }
+                                            @if (st != null && st.IsInProgress)
+                                            {
+                                                <div class="action-dd-divider"></div>
+                                                <a href="/petugas-loket/reschedule/@item.PermohonanPPIDID/@JenisTask.Observasi"    class="action-dd-item">📅 Reschedule</a>
+                                                <a href="/petugas-loket/update-pic/@item.PermohonanPPIDID/@JenisTask.Observasi"    class="action-dd-item">👤 Update PIC</a>
+                                                <div class="action-dd-divider"></div>
+                                                <a href="/petugas-loket/batal-subtask/@item.PermohonanPPIDID/@JenisTask.Observasi" class="action-dd-item danger">🚫 Batalkan</a>
+                                            }
+                                            @if (st != null && st.IsSelesai)
+                                            {
+                                                <div class="action-dd-divider"></div>
+                                                <a href="/petugas-loket/reopen-subtask/@item.PermohonanPPIDID/@JenisTask.Observasi" class="action-dd-item">↩ Buka Kembali</a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="px-5 py-3 border-t border-gray-50 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+            <span class="font-medium text-gray-500">@Model.Count permohonan observasi</span>
+            <div class="flex flex-wrap gap-3">
+                @if (cntPending > 0)    { <span class="text-amber-600 font-medium">⏳ @cntPending belum dijadwalkan</span> }
+                @if (cntDijadwal > 0)   { <span class="text-orange-600 font-medium">📅 @cntDijadwal dijadwalkan</span> }
+                @if (cntSelesai > 0)    { <span class="text-emerald-600 font-medium">✓ @cntSelesai selesai</span> }
+                @if (cntDibatalkan > 0) { <span class="text-red-400 font-medium">🚫 @cntDibatalkan dibatalkan</span> }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .col-th{padding:12px 16px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
+    .no-perm{font-family:'JetBrains Mono','Fira Code',ui-monospace,monospace;font-size:11.5px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px;padding:3px 8px;white-space:nowrap;letter-spacing:.01em;display:inline-block}
+    .kat-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:20px;padding:3px 9px;white-space:nowrap;border:1px solid}
+    .kat-mhs{color:#1d4ed8;background:#eff6ff;border-color:#bfdbfe}
+    .kat-lsm{color:#065f46;background:#f0fdf4;border-color:#a7f3d0}
+    .kat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .st{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;border-radius:20px;padding:3px 9px;white-space:nowrap;border:1px solid;line-height:1.4}
+    .st-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .st--selesai{color:#065f46;background:#ecfdf5;border-color:#a7f3d0}
+    .st--batal{color:#9f1239;background:#fff1f2;border-color:#fecdd3}
+    .st--proses{color:#92400e;background:#fffbeb;border-color:#fde68a}
+    .st--obs{color:#7c2d12;background:#fff7ed;border-color:#fed7aa}
+    .tab-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;font-size:12px;font-weight:600;border:1px solid #e5e7eb;color:#6b7280;background:white;text-decoration:none;transition:all .15s}
+    .tab-btn:hover{background:#f9fafb;color:#374151}
+    .tab-btn.active{background:#002d7a;color:white;border-color:#002d7a}
+    .stat-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid #e5e7eb;color:#6b7280;background:white;text-decoration:none;transition:all .15s}
+    .stat-chip:hover{background:#f9fafb}
+    .chip-count{font-size:10px;font-weight:900;background:#e5e7eb;color:#374151;padding:1px 6px;border-radius:10px}
+    .active-all{background:#374151;color:white;border-color:#374151}
+    .active-all .chip-count{background:rgba(255,255,255,.25);color:white}
+    .active-amber{background:#fef3c7;border-color:#fbbf24;color:#92400e}
+    .active-orange{background:#fff7ed;border-color:#f97316;color:#7c2d12}
+    .active-emerald{background:#d1fae5;border-color:#059669;color:#065f46}
+    /* ── Sticky action column ──────────────────────────────────────────── */
+    .col-sticky-right {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+    }
+    /* Header sticky */
+    thead .col-sticky-right {
+        background: #f9fafb;
+        box-shadow: -4px 0 8px -2px rgba(0,0,0,.06);
+    }
+    /* Body cells sticky */
+    .td-sticky-cell {
+        background: #ffffff;
+        box-shadow: -4px 0 8px -2px rgba(0,0,0,.06);
+    }
+    /* Dropdown diposisikan via JS (fixed) — position:absolute default di-override */
+    .action-dropdown { z-index: 9999 !important; }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    'use strict';
+
+    // ── Tutup semua dropdown & bersihkan style fixed ──────────────────
+    function closeAll() {
+        document.querySelectorAll('.action-dropdown').forEach(function (d) {
+            d.classList.add('hidden');
+            d.style.position  = '';
+            d.style.top       = '';
+            d.style.left      = '';
+            d.style.right     = '';
+            d.style.minWidth  = '';
+        });
+    }
+
+    // ── Override global toggleActionMenu dari _ActionMenu.cshtml ─────
+    // Masalah: overflow-x:auto pada wrapper tabel memotong (clip) dropdown
+    // yang pakai position:absolute. Solusi: posisikan dropdown dengan
+    // position:fixed berdasarkan koordinat layar tombol ⋯.
+    window.toggleActionMenu = function (btn) {
+        var wrap = btn.closest('.action-more-wrap');
+        var menu = wrap.querySelector('.action-dropdown');
+        var isOpen = !menu.classList.contains('hidden');
+
+        closeAll();
+
+        if (!isOpen) {
+            var rect = btn.getBoundingClientRect();
+
+            menu.style.position = 'fixed';
+            menu.style.top      = (rect.bottom + 4) + 'px';
+            menu.style.left     = 'auto';
+            menu.style.right    = (window.innerWidth - rect.right) + 'px';
+            menu.style.minWidth = '160px';
+
+            menu.classList.remove('hidden');
+
+            // Koreksi jika dropdown terpotong di bawah viewport
+            requestAnimationFrame(function () {
+                var menuRect = menu.getBoundingClientRect();
+                if (menuRect.bottom > window.innerHeight - 8) {
+                    menu.style.top  = 'auto';
+                    menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+                }
+            });
+        }
+    };
+
+    // Klik di luar → tutup semua
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.action-more-wrap')) closeAll();
+    });
+
+    // Scroll atau resize → tutup semua (posisi fixed bisa stale)
+    window.addEventListener('scroll', closeAll, true);
+    window.addEventListener('resize', closeAll);
+})();
+</script>
+}

@@ -1,0 +1,450 @@
+
+@using PermintaanData.Helpers
+@model SuratPemberianIzinVm
+@{
+    Layout = null;
+    var bulanIndonesia = new[] { "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                                  "Juli", "Agustus", "September", "Oktober", "November", "Desember" };
+    string FmtTanggal(DateOnly? d) =>
+        d.HasValue ? $"{d.Value.Day} {bulanIndonesia[d.Value.Month]} {d.Value.Year}" : string.Empty;
+
+    // Kalimat "menghubungi Bidang X DLH... dan Bidang Y..."
+    string KalimatBidang()
+    {
+        var enc = System.Text.Encodings.Web.HtmlEncoder.Default;
+        if (!Model.BidangTujuan.Any()) return "Dinas Lingkungan Hidup Provinsi DKI Jakarta";
+        var parts = PermohonanRules.ParentDisposisiLabels(Model.BidangTujuan)
+            .Select(b => enc.Encode(PermohonanRules.FormatUnitHubungi(b)))
+            .ToList();
+        if (parts.Count == 1) return parts[0];
+        return string.Join(", ", parts.Take(parts.Count - 1)) + ", dan " + parts.Last();
+    }
+
+    // Baris Dasar surat permohonan — semua input user di-encode via HtmlEncoder
+    string DasarSuratPermohonan()
+    {
+        var enc = System.Text.Encodings.Web.HtmlEncoder.Default;
+
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(Model.JabatanPengirim))
+            parts.Add(enc.Encode(Model.JabatanPengirim));
+        if (!string.IsNullOrEmpty(Model.NamaInstansiPengirim))
+            parts.Add(enc.Encode(Model.NamaInstansiPengirim));
+        var pengirim = string.Join(" ", parts);
+
+        var nomor   = !string.IsNullOrEmpty(Model.NomorSuratPermohonan)
+                      ? $"Nomor: {enc.Encode(Model.NomorSuratPermohonan)}" : "";
+        var tanggal = Model.TanggalSuratPermohonan.HasValue
+                      ? $"tanggal {FmtTanggal(Model.TanggalSuratPermohonan)}" : "";
+        var perihal = !string.IsNullOrEmpty(Model.PerihalSuratPermohonan)
+                      ? $"Perihal: {enc.Encode(Model.PerihalSuratPermohonan)}" : "";
+
+        var sb = new System.Text.StringBuilder($"Surat {pengirim}");
+        var detail = new List<string>();
+        if (!string.IsNullOrEmpty(nomor))   detail.Add(nomor);
+        if (!string.IsNullOrEmpty(tanggal)) detail.Add(tanggal);
+        if (!string.IsNullOrEmpty(perihal)) detail.Add(perihal);
+        if (detail.Any()) sb.Append(" " + string.Join(" ", detail));
+        sb.Append(".");
+        return sb.ToString();
+    }
+}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Surat Izin — @Model.NoPermohonan</title>
+    <style>
+        /* ── Reset & base ── */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: #e5e7eb; font-family: Arial, sans-serif; }
+
+        /* ── Screen wrapper ── */
+        .screen-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 48px;
+        }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .toolbar-left { display: flex; gap: 10px; align-items: center; }
+        .btn-back {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 10px;
+            font-family: sans-serif; font-size: 13px; font-weight: 600;
+            color: #374151; background: white; border: 1px solid #d1d5db;
+            text-decoration: none; cursor: pointer;
+            transition: all .15s;
+        }
+        .btn-back:hover { background: #f9fafb; }
+        .btn-print {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 20px; border-radius: 10px;
+            font-family: sans-serif; font-size: 13px; font-weight: 700;
+            color: white; background: #002d7a; border: none; cursor: pointer;
+            transition: all .15s;
+        }
+        .btn-print:hover { background: #1e40af; }
+        .toolbar-info {
+            font-family: sans-serif; font-size: 11px; color: #6b7280;
+            background: #f3f4f6; border: 1px solid #e5e7eb;
+            padding: 6px 12px; border-radius: 8px;
+        }
+
+        /* ── Letter sheet ── */
+        .letter {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 20mm 25mm 20mm 30mm;
+            box-shadow: 0 4px 24px rgba(0,0,0,.15);
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #000;
+            position: relative;
+        }
+
+ /* ── Header ── */
+ .letter-header {
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     padding-bottom: 10px;
+     margin-bottom: 4px;
+     gap: 8px;
+
+ }
+ .letter-header .logo-wrap {
+     flex-shrink: 0;
+ }
+ .letter-header .logo-wrap img {
+     width: 80px;
+     height: 80px;
+     object-fit: contain;
+ }
+ .letter-header .header-text {
+     text-align: center;
+     font-weight: bold;
+ }
+        /* ── Judul surat ── */
+        .surat-title { text-align: center; margin: 0 0 4px; }
+        .surat-title .label     { font-size: 12pt; font-family: Arial; }
+        .surat-title .nomor     { font-size: 12pt; min-height: 1.4em; }
+        .surat-title .nomor::after { content: attr(data-blank); }
+        .surat-title .tentang,
+        .surat-title .judul,
+        .surat-title .atas-nama {
+            font-size: 12pt;
+            font-family: Arial;
+            line-height: 1.7;
+        }
+        .surat-title .tentang {
+            margin-top: 4px;
+        }
+
+        .surat-title .judul {
+            text-transform: uppercase;
+        }
+
+        /* ── Body ── */
+        .surat-body { margin-top: 16px; }
+
+        /* ── Dasar table ── */
+        .dasar-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+        .dasar-table td { vertical-align: top; padding: 2px 4px; font-size: 12pt; font-family: Arial;}
+        .dasar-table td:first-child { white-space: nowrap; width: 140px; padding-right: 6px; }
+        .dasar-table td:nth-child(2) { width: 14px; padding: 2px 8px 2px 4px; }
+
+        .dasar-table ol li { text-align: justify; }
+
+        /* ── MEMBERI IZIN ── */
+        .memberi-izin {
+            text-align: center;
+            font-size: 12pt;
+            margin: 24px 0 6px;
+            text-transform: uppercase;
+        }
+
+        /* ── Identitas perorangan ── */
+        .identitas-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; table-layout: fixed; }
+        .identitas-table td { vertical-align: top; padding: 2px 4px; font-size: 12pt; font-family: Arial;}
+        .identitas-table td:first-child { width: 140px; white-space: nowrap; }
+        .identitas-table td:nth-child(2) { width: 14px; }
+
+        /* ── Tabel kelompok ── */
+        .kelompok-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 12pt; font-family: Arial; }
+        .kelompok-table th, .kelompok-table td {
+            border: 1px solid #000;
+            padding: 4px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .kelompok-table th { text-align: center; font-weight: normal ; background: #f3f4f6; }
+        .kelompok-table td:first-child { text-align: center; width: 40px; }
+
+        /* ── Ketentuan list ── */
+        .ketentuan { margin: 10px 0 10px 20px; }
+        .ketentuan li { margin-bottom: 4px; font-size: 12pt; font-family: Arial; }
+
+        /* ── Untuk table ── */
+        .untuk-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .untuk-table td { vertical-align: top; padding: 2px 4px; font-size: 12pt; font-family: Arial;}
+        .untuk-table td:first-child { white-space: nowrap; width: 140px; }
+        .untuk-table td:nth-child(2) { width: 14px; padding: 2px 6px; }
+
+        /* ── TTD area ── */
+        .ttd-section { display: flex; justify-content: flex-end; margin-top: 24px; page-break-inside: avoid; break-inside: avoid; }
+        .ttd-block { text-align: center; font-size: 12pt; font-family: Arial;; }
+        .ttd-lokasi {
+            text-align: left;
+            margin-bottom: 4px;
+            line-height: 1.6;
+        }
+        .ttd-lokasi span { display: block; }
+        .ttd-space { height: 70px; }
+
+        /* ── Tembusan ── */
+        .tembusan { margin-top: 40px; font-size: 12pt; font-family: Arial; }
+        .tembusan .label { font-weight: }
+        .tembusan ol { margin-left: 0; padding-left: 28px; list-style: decimal; }
+
+        /* ── Print media query ── */
+        @@media print {
+            html, body { background: white !important; }
+            .screen-wrapper { padding: 0 !important; background: white !important; }
+            .toolbar { display: none !important; }
+            .letter { box-shadow: none !important; margin: 0 !important;
+                      padding: 0 !important;
+                      width: 100% !important; }
+            @@page {
+                size: A4;
+                margin: 20mm 20mm 20mm 25mm;
+                @@top-left     { content: ''; }
+                @@top-center   { content: ''; }
+                @@top-right    { content: ''; }
+                @@bottom-left  { content: ''; }
+                @@bottom-center{ content: ''; }
+                @@bottom-right { content: ''; }
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="screen-wrapper">
+
+    <!-- ── Toolbar (sembunyikan saat print) ── -->
+    <div class="toolbar">
+    <div class="toolbar-left">
+        <a class="btn-back"
+           href="/petugas-loket/surat-pemberian-izin/@Model.PermohonanPPIDID">
+            ← Edit Kembali
+        </a>
+        <span class="toolbar-info">
+            📋 @Model.NoPermohonan
+            @if (!string.IsNullOrEmpty(Model.NomorSurat))
+            {
+                <span> · No. Surat: @Model.NomorSurat</span>
+            }
+        </span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn-print" onclick="window.print()">
+            🖨 Cetak Surat
+        </button>
+        <a class="btn-print"
+           href="/petugas-loket/surat-izin/@Model.PermohonanPPIDID?fromCetak=true"
+           style="background:#059669;text-decoration:none;">
+            ☁️ Upload Surat Izin →
+        </a>
+    </div>
+</div>
+
+
+
+    <!-- ══ LETTER BODY ══ -->
+    <div class="letter">
+
+         <!-- Header instansi -->
+ <div class="letter-header">
+     <div class="logo-wrap">
+         <img src="/images/logo-jayaraya.png" alt="Logo Jaya Raya" />
+     </div>
+     <div class="header-text">
+         <div class="instansi">DINAS LINGKUNGAN HIDUP</div>
+         <div class="provinsi">PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA</div>
+
+     </div>
+ </div>
+
+        <!-- Judul surat -->
+        <div class="surat-title">
+            <div class="label">SURAT IZIN</div>
+            <div class="nomor">
+                NOMOR :
+                @if (!string.IsNullOrEmpty(Model.NomorSurat))
+                {
+                    @Model.NomorSurat
+                }
+                else
+                {
+                    <span style="display:inline-block;min-width:200px;">&nbsp;</span>
+                }
+            </div>
+            <div class="tentang">TENTANG</div>
+            <div class="judul">@Model.JenisKegiatan?.ToUpperInvariant()</div>
+            <div class="judul">UNTUK PEMBUATAN @Model.JenisKarya?.ToUpperInvariant()</div>
+            <div class="atas-nama">@Model.AtasNama</div>
+        </div>
+
+        <!-- Dasar -->
+        <div class="surat-body">
+            <table class="dasar-table">
+                <tr>
+                    <td>Dasar</td>
+                    <td>:</td>
+                    <td>
+                        <ol style="padding-left:16px; margin:0; list-style-type:lower-alpha;">
+                            <li style="margin-bottom:4px;">Undang-Undang Nomor 11 Tahun 2019 tentang Sistem Nasional Ilmu Pengetahuan dan Teknologi;</li>
+                            <li style="margin-bottom:4px;">Peraturan Menteri Dalam Negeri Nomor 3 Tahun 2018 Tentang Penerbitan Keterangan Penelitian;</li>
+                            <li style="margin-bottom:4px;">Peraturan Gubernur DKI Jakarta Nomor 57 Tahun 2022 tentang Organisasi dan Tata Kerja Dinas Lingkungan Hidup;</li>
+                            <li style="margin-bottom:4px;">Pengumuman Kepala Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu Provinsi Daerah Khusus Ibukota Jakarta Nomor 137 Tahun 2020 Tanggal 11 November 2020 Tentang Pelayanan Rekomendasi Penelitian/Surat Keterangan Penelitian;</li>
+                            <li>@Html.Raw(DasarSuratPermohonan())</li>
+                        </ol>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- MEMBERI IZIN -->
+            <div class="memberi-izin">MEMBERI IZIN</div>
+
+            @if (!Model.IsKelompok)
+            {
+                <!-- Perorangan -->
+                <table class="identitas-table">
+                    <tr>
+                        <td>Kepada</td>
+                        <td>:</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Nama</td>
+                        <td>:</td>
+                        <td>@Model.NamaPemohon</td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(Model.NIMPemohon))
+                    {
+                        <tr>
+                            <td>NIM</td>
+                            <td>:</td>
+                            <td>@Model.NIMPemohon</td>
+                        </tr>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.ProdiPemohon))
+                    {
+                        <tr>
+                            <td>Program Studi</td>
+                            <td>:</td>
+                            <td>@Model.ProdiPemohon</td>
+                        </tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <!-- Kelompok: tabel anggota -->
+                <table class="kelompok-table">
+                    <thead>
+                        <tr>
+                            <th>NO</th>
+                            <th>NAMA</th>
+                            <th>NIM</th>
+                            <th>PROGRAM STUDI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Anggota.Count; i++)
+                        {
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>@Model.Anggota[i].Nama</td>
+                                <td>@Model.Anggota[i].NIM</td>
+                                <td>@Model.Anggota[i].Prodi</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <!-- Untuk -->
+            <table class="untuk-table" style="margin-top:8px;">
+                <tr>
+                    <td>Untuk</td>
+                    <td>:</td>
+                    <td>@Model.KalimatAksi dengan Judul <em>"@Model.JudulPenelitian"</em>.</td>
+                </tr>
+            </table>
+
+            <!-- Ketentuan -->
+            <p style="margin-top:12px; font-size:12pt; font-family: Arial;">Dengan ketentuan yang harus ditaati sebagai berikut:</p>
+            <ol class="ketentuan">
+                <li>Mematuhi ketentuan peraturan yang berlaku;</li>
+                <li>Menyerahkan laporan hasil kegiatan melalui Subkelompok Kepegawaian;</li>
+                <li>Surat Izin yang diberikan dapat dibatalkan sewaktu-waktu apabila tidak sesuai dengan ketentuan yang berlaku.</li>
+            </ol>
+
+            <!-- Kalimat bidang tujuan -->
+            <p style="font-size:12pt; margin-top:8px;text-align: justify; font-family: Arial;">
+                untuk kepentingan tersebut kepada yang bersangkutan agar menghubungi
+                @Html.Raw(KalimatBidang()).
+            </p>
+
+            <p style="margin-top:14px; margin-bottom:28px; font-size:12pt; font-family: Arial;">
+                Demikian Surat Izin Penelitian ini dibuat untuk dipergunakan seperlunya.
+            </p>
+
+            <!-- TTD -->
+            <div class="ttd-section">
+                <div class="ttd-block">
+                    <div class="ttd-lokasi">
+                        <span>Dikeluarkan di Jakarta</span>
+                        <span>Pada tanggal @FmtTanggal(Model.TanggalSurat)</span>
+                    </div>
+                    <br />
+                    <div>@Model.JabatanPenandatangan</div>
+                    <div>Provinsi DKI Jakarta,</div>
+                    <div class="ttd-space"></div>
+                    <div>@Model.NamaPenandatangan</div>
+                    <div>NIP @Model.NipPenandatangan</div>
+                </div>
+            </div>
+
+            <!-- Tembusan -->
+            <div class="tembusan">
+                <span class="label">Tembusan:</span>
+                <ol>
+                    @foreach (var line in Model.BuildTembusanLines())
+                    {
+                        <li>@line;</li>
+                    }
+                </ol>
+            </div>
+
+        </div><!-- /surat-body -->
+    </div><!-- /letter -->
+
+</div><!-- /screen-wrapper -->
+</body>
+</html>

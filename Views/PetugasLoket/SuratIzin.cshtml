@@ -1,0 +1,288 @@
+@model SuratIzinVm
+@{
+    ViewData["Title"] = "Upload Surat Izin";
+    ViewData["Role"]  = "Petugas Loket";
+    Layout = "_LayoutAdmin";
+}
+
+<div class="max-w-xl mx-auto">
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+    <div class="px-6 py-5 border-b border-gray-50 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">📄</div>
+        <div>
+            <h3 class="font-bold text-gray-800">Upload Surat Izin</h3>
+            <p class="text-xs font-mono text-gray-400 mt-0.5">@Model.NoPermohonan · @Model.NamaPemohon</p>
+        </div>
+    </div>
+
+    <div class="p-6">
+        @if (TempData["Warning"] != null)
+    {
+        <div class="flex items-start gap-2.5 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4">
+            <span class="flex-shrink-0 mt-0.5 text-yellow-500">⚠️</span>
+            <p class="text-sm text-yellow-800">@Html.Raw(TempData["Warning"])</p>
+            <a href="/petugas-loket/surat-pemberian-izin/@Model.PermohonanPPIDID"
+               class="ml-auto flex-shrink-0 text-xs font-bold text-yellow-700 underline hover:text-yellow-900 whitespace-nowrap">
+               Cetak Dulu →
+            </a>
+        </div>
+    }
+
+        @* Ringkasan keperluan (read-only dari DB) *@
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-3">Keperluan yang Diajukan</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+                @if (Model.IsObservasi)      { <span class="bg-orange-100 text-orange-800 text-xs px-2.5 py-1 rounded-full font-semibold">🔍 Observasi</span> }
+                @if (Model.IsPermintaanData) { <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-semibold">📊 Permintaan Data</span> }
+                @if (Model.IsWawancara)      { <span class="bg-violet-100 text-violet-800 text-xs px-2.5 py-1 rounded-full font-semibold">🎤 Wawancara</span> }
+            </div>
+            <p class="text-[10px] text-blue-500 leading-relaxed">
+                @if (Model.IsPermintaanData)
+                {
+                    <span>→ Setelah surat terbit: <strong>disposisi ke KDI</strong> untuk pemrosesan permintaan data.</span>
+                    @if (Model.IsObservasi || Model.IsWawancara)
+                    {
+                        <span> Obs/Waw dikelola Loket secara paralel.</span>
+                    }
+                }
+                else
+                {
+                    <span>→ Setelah surat terbit: <strong>Obs/Waw dikelola langsung oleh Loket Kepegawaian</strong>.</span>
+                }
+            </p>
+        </div>
+
+        <form id="surat-izin-form" asp-action="SuratIzinPost" asp-controller="PetugasLoket" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="PermohonanPPIDID" />
+            <input type="hidden" asp-for="NoPermohonan" />
+            <input type="hidden" asp-for="NamaPemohon" />
+            <input type="hidden" asp-for="Kategori" />
+            <input type="hidden" asp-for="IsObservasi" />
+            <input type="hidden" asp-for="IsPermintaanData" />
+            <input type="hidden" asp-for="IsWawancara" />
+            <input type="hidden" name="DisposisiUnits[0]" value="PSMDI" />
+            <input type="hidden" name="NamaBidangList[0]" id="f-bidang-name" value="" />
+
+            @* ── Nomor Surat ── *@
+            <div class="mb-4">
+                <label class="lbl">No. Surat Izin <span class="req">*</span></label>
+                <input asp-for="NoSuratIzin" id="fld-no-surat" class="fld font-mono"
+                       placeholder="Contoh: 070/DLH.1/-1.842.2/III/2026" />
+                <span asp-validation-for="NoSuratIzin" class="err"></span>
+            </div>
+
+            @* ── Tanggal Surat ── *@
+            <div class="mb-4">
+                <label class="lbl">Tanggal Surat <span class="req">*</span></label>
+                <input asp-for="TanggalSurat" id="fld-tgl-surat" type="date" class="fld" />
+                <span asp-validation-for="TanggalSurat" class="err"></span>
+            </div>
+
+            @* ── Upload File Surat Izin ── *@
+            <div class="mb-5">
+                <label class="lbl">
+                    Upload Surat Izin (PDF) <span class="req">*</span>
+                </label>
+                <div id="dropzone-surat"
+                     class="border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl p-6 text-center transition-all cursor-pointer bg-gray-50 hover:bg-blue-50 group">
+                    <div id="dz-idle">
+                        <div class="text-2xl mb-1">📄</div>
+                        <p class="text-sm font-semibold text-gray-600 group-hover:text-blue-700">Klik atau drag file PDF ke sini</p>
+                        <p class="text-xs text-gray-400 mt-1">Hanya PDF — maks. 10 MB</p>
+                    </div>
+                    <div id="dz-selected" class="hidden">
+                        <div class="text-2xl mb-1">✅</div>
+                        <p id="suratFileName" class="text-sm font-bold text-blue-700"></p>
+                        <p class="text-xs text-gray-400 mt-1">Klik untuk ganti file</p>
+                    </div>
+                    <input asp-for="FileSuratIzin" type="file" id="fileSuratIzin"
+                           accept=".pdf" class="hidden" />
+                </div>
+                <span asp-validation-for="FileSuratIzin" class="err"></span>
+            </div>
+
+            @* ── Nama Produsen Data (wawancara-only) ── *@
+            @if (Model.IsWawancaraOnly)
+            {
+                <div class="mb-5">
+                    <label class="lbl">
+                        Unit / Nama Produsen Data (Wawancara)
+                        <span class="text-gray-400 font-normal normal-case">(opsional)</span>
+                    </label>
+                    <input asp-for="NamaProdusenData" class="fld"
+                           placeholder="Misal: Bidang Pemantauan Lingkungan Hidup" />
+                </div>
+            }
+
+            @* ── Info routing ── *@
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 flex gap-2 items-start">
+                <span class="text-amber-500 flex-shrink-0 mt-0.5">ℹ️</span>
+                <div class="text-xs text-amber-700 leading-relaxed">
+                    @if (Model.IsPermintaanData)
+                    {
+                        <p>Setelah surat terbit, permohonan otomatis <strong>didisposisi ke KDI</strong> untuk pemrosesan permintaan data.</p>
+                        @if (Model.IsObservasi || Model.IsWawancara)
+                        {
+                            <p class="mt-1">Keperluan <strong>Observasi/Wawancara</strong> akan dibuat dan dikelola di menu sub-tugas Loket Kepegawaian secara paralel.</p>
+                        }
+                    }
+                    else
+                    {
+                        <p>Setelah surat terbit, sub-tugas <strong>Observasi/Wawancara</strong> akan dibuat dan dikelola di menu sub-tugas Loket Kepegawaian.</p>
+                    }
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <a href="/petugas-loket/detail/@Model.PermohonanPPIDID"
+                   class="flex-1 text-center border border-gray-200 text-gray-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                    Batal
+                </a>
+                @* {{!-- Ganti type="submit" → type="button" + onclick --}} *@
+                <button type="button" id="btn-upload-surat" onclick="showConfirmPopup()"
+                        class="flex-grow bg-[#002d7a] hover:bg-blue-900 text-white font-bold py-2.5 px-8 rounded-xl text-sm shadow-sm transition-all active:scale-95">
+                    📄 Upload Surat Izin →
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+@* {{!-- ══ Shared confirm modal (overlay, CSS, JS utilities) ══ --}} *@
+<partial name="Partials/_ConfirmModal" />
+
+<style>
+    .lbl { display:block; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px }
+    .req { color:#f87171 }
+    .fld { display:block; width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:9px 14px; font-size:13.5px; background:#fafafa; outline:none; transition:all .15s }
+    .fld:focus { box-shadow:0 0 0 2.5px #3b82f6; border-color:transparent; background:white }
+    .err { color:#ef4444; font-size:11px; margin-top:3px; display:block }
+</style>
+
+@section Scripts {
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   SuratIzin — page-specific confirm logic
+   Bergantung pada utilities dari _ConfirmModal.cshtml:
+     openModal / closeModal / showToast / shakeButton / showResultPhase
+══════════════════════════════════════════════════════════════════════ */
+
+/* ── Dropzone ─────────────────────────────────────────────────────── */
+const dz  = document.getElementById('dropzone-surat');
+const fi  = document.getElementById('fileSuratIzin');
+const fnEl = document.getElementById('suratFileName');
+
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', e => {
+    e.preventDefault();
+    dz.classList.add('border-blue-400', 'bg-blue-50');
+});
+dz.addEventListener('dragleave', () => dz.classList.remove('border-blue-400', 'bg-blue-50'));
+dz.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fi.files = dt.files;
+        setFileSelected(file.name);
+    } else {
+        showToast('Hanya file PDF yang diperbolehkan.');
+    }
+});
+fi.addEventListener('change', function () {
+    if (this.files[0]) setFileSelected(this.files[0].name);
+});
+function setFileSelected(name) {
+    fnEl.textContent = name;
+    document.getElementById('dz-idle').classList.add('hidden');
+    document.getElementById('dz-selected').classList.remove('hidden');
+    dz.classList.add('border-blue-400', 'bg-blue-50');
+}
+
+/* ── Collect values ───────────────────────────────────────────────── */
+function collectValues() {
+    const noSurat   = document.getElementById('fld-no-surat')?.value?.trim();
+    const tglSurat  = document.getElementById('fld-tgl-surat')?.value;
+    const fileName  = fi.files[0]?.name ?? '';
+    const noPermohonan = document.querySelector('[name="NoPermohonan"]')?.value ?? '';
+    const namaPemohon  = document.querySelector('[name="NamaPemohon"]')?.value ?? '';
+    return { noSurat, tglSurat, fileName, noPermohonan, namaPemohon };
+}
+
+/* ── Format tanggal ke id-ID ──────────────────────────────────────── */
+function formatTanggal(val) {
+    if (!val) return '—';
+    try {
+        return new Date(val).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    } catch { return val; }
+}
+
+/* ── Validate ─────────────────────────────────────────────────────── */
+function validate(v) {
+    if (!v.noSurat) { showToast('No. Surat Izin wajib diisi.'); return false; }
+    if (!v.tglSurat) { showToast('Tanggal Surat wajib diisi.'); return false; }
+    if (!v.fileName)  { showToast('File PDF Surat Izin wajib diunggah.'); return false; }
+    return true;
+}
+
+/* ══ FASE 1 — Tampilkan modal konfirmasi ══════════════════════════ */
+function showConfirmPopup() {
+    const v = collectValues();
+    if (!validate(v)) {
+        shakeButton('btn-upload-surat');
+        return;
+    }
+
+    document.getElementById('modal-content').innerHTML = `
+        <div class="m-header">
+            <div class="m-badge info">📄 Upload Surat Izin</div>
+            <p class="m-title">Konfirmasi Upload</p>
+            <p class="m-sub">Periksa kembali data berikut sebelum menerbitkan surat izin.</p>
+        </div>
+        <div class="m-summary">
+            <div class="m-row">
+                <span class="m-row-lbl">No. Permohonan</span>
+                <span class="m-row-val" style="font-family:monospace;color:#002d7a">${v.noPermohonan}</span>
+            </div>
+            <div class="m-row">
+                <span class="m-row-lbl">Pemohon</span>
+                <span class="m-row-val">${v.namaPemohon}</span>
+            </div>
+            <div class="m-row">
+                <span class="m-row-lbl">No. Surat Izin</span>
+                <span class="m-row-val" style="font-family:monospace;font-size:11px">${v.noSurat}</span>
+            </div>
+            <div class="m-row">
+                <span class="m-row-lbl">Tanggal Surat</span>
+                <span class="m-row-val">${formatTanggal(v.tglSurat)}</span>
+            </div>
+            <div class="m-row">
+                <span class="m-row-lbl">File</span>
+                <span class="m-row-val" style="color:#059669;font-size:11.5px">📎 ${v.fileName}</span>
+            </div>
+        </div>
+        <div class="m-actions">
+            <button class="btn-back" onclick="closeModal()">Periksa Lagi</button>
+            <button class="btn-go ap" onclick="runResult()">Ya, Terbitkan →</button>
+        </div>`;
+
+    openModal();
+}
+
+/* ══ FASE 2 — Animasi hasil lalu submit ══════════════════════════ */
+function runResult() {
+    showResultPhase({
+        isSuccess : true,
+        title     : 'Surat Izin Diterbitkan!',
+        sub       : 'Surat izin berhasil diupload dan permohonan akan diproses ke tahap selanjutnya.',
+        chip      : 'Diteruskan ke Unit Terkait',
+        chipCls   : 'ap',
+        onDone    : () => document.getElementById('surat-izin-form').submit()
+    });
+}
+</script>
+}

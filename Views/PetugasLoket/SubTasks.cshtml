@@ -1,0 +1,661 @@
+
+@model ParallelTasksVm
+@{
+    ViewData["Title"] = $"Sub-tugas Obs/Waw — {Model.Permohonan.NoPermohonan}";
+    ViewData["Role"]  = "Petugas Loket";
+    Layout = "_LayoutAdmin";
+
+    var p       = Model.Permohonan;
+    var pr      = p.Pribadi;
+    var ppid    = pr?.PribadiPPID;
+    var current = p.StatusPPIDID ?? StatusId.TerdaftarSistem;
+
+    var stObs = Model.GetTask(JenisTask.Observasi);
+    var stWaw = Model.GetTask(JenisTask.Wawancara);
+
+    bool isDataSiap   = current == StatusId.DataSiap;
+    bool isFeedback   = current == StatusId.FeedbackPemohon;
+    bool isSelesai    = current == StatusId.Selesai;
+
+    var tugasDocs = ViewData["TugasDocs"] as List<DokumenPPID> ?? new();
+    var kdiTask   = ViewData["KdiTask"]   as List<SubTaskPPID> ?? new();
+
+        var feedbacks     = ViewData["FeedbackMap"] as Dictionary<string, bool> ?? new();
+    int fbTerisi      = feedbacks.Count;
+    int taskSelesai   = Model.SubTasks.Count(t => t.IsSelesai);
+    bool anyFeedback  = fbTerisi > 0;
+    bool allFbDone    = taskSelesai > 0 && fbTerisi >= taskSelesai;
+
+    static bool IsRecentlyUpdated(SubTaskPPID? st) =>
+        st?.UpdatedAt >= DateTime.UtcNow.AddHours(-72);
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="bg-emerald-50 border border-emerald-300 rounded-2xl px-5 py-3 mb-4 flex items-start gap-3">
+        <span class="text-emerald-500 text-lg flex-shrink-0">✅</span>
+        <p class="text-emerald-800 text-sm font-medium">@Html.Raw(TempData["Success"])</p>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="bg-red-50 border border-red-300 rounded-2xl px-5 py-3 mb-4 flex items-start gap-3">
+        <span class="text-red-500 text-lg flex-shrink-0">⚠️</span>
+        <p class="text-red-800 text-sm font-medium">@Html.Raw(TempData["Error"])</p>
+    </div>
+}
+
+<div class="max-w-5xl mx-auto">
+
+    <a href="/petugas-loket" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-medium mb-5">← Kembali Dashboard</a>
+
+    <!-- Header -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">Sub-tugas Obs/Waw — Loket Kepegawaian</p>
+            <h2 class="text-2xl font-extrabold font-mono text-gray-800">@p.NoPermohonan</h2>
+            <p class="text-sm text-gray-500 mt-1">@pr?.Nama — @p.JudulPenelitian</p>
+        </div>
+        <div class="flex items-center gap-2 border rounded-full px-4 py-2 self-start sm:self-center
+            @(isSelesai  ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+              isFeedback ? "bg-amber-50 border-amber-200 text-amber-700" :
+              isDataSiap ? "bg-blue-50 border-blue-200 text-blue-700" :
+                           "bg-gray-100 border-gray-200 text-gray-500")">
+            <span class="w-2 h-2 rounded-full
+                @(isSelesai  ? "bg-emerald-400" :
+                  isFeedback ? "bg-amber-400" :
+                  isDataSiap ? "bg-blue-500" : "bg-gray-400")"></span>
+            <span class="text-sm font-semibold">@(p.Status?.NamaStatusPPID ?? "—")</span>
+        </div>
+    </div>
+
+    @* ── Banner: laporan pemohon sudah diunggah ── *@
+@if (tugasDocs.Any() && !isSelesai)
+{
+    <div class="bg-indigo-50 border border-indigo-300 rounded-2xl px-5 py-3.5 mb-4
+                flex items-center gap-3">
+        <span class="text-2xl flex-shrink-0">📋</span>
+        <div class="flex-1 min-w-0">
+            <p class="text-indigo-800 text-sm font-bold">
+                Hasil Laporan Pemohon Sudah Diunggah
+                <span class="ml-1.5 text-[11px] bg-indigo-200 text-indigo-700
+                             px-2 py-0.5 rounded-full font-semibold">
+                    @tugasDocs.Count file
+                </span>
+            </p>
+            <p class="text-indigo-600 text-xs mt-0.5 truncate">
+                Terakhir: @tugasDocs.First().CreatedAt?.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                @if (isDataSiap || isFeedback)
+                {
+                    <span class="font-semibold"> — Konfirmasi selesai tersedia di bawah.</span>
+                }
+            </p>
+        </div>
+        @if (isDataSiap || isFeedback)
+        {
+            <a href="#panel-selesai"
+               class="flex-shrink-0 text-xs bg-indigo-600 hover:bg-indigo-700
+                      text-white font-bold px-3 py-1.5 rounded-lg transition-colors">
+                Lihat ↓
+            </a>
+        }
+    </div>
+}
+
+    <!-- Progress Obs/Waw -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Progress Obs/Waw</p>
+            <span class="text-sm font-bold @(Model.AllDone ? "text-emerald-600" : "text-gray-700")">
+                @Model.DoneTasks / @Model.TotalTasks selesai
+            </span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700
+                @(Model.AllDone ? "bg-emerald-500" : "bg-violet-500")"
+                 style="width:@Model.ProgressPct%"></div>
+        </div>
+        @if (Model.AllDone && !isSelesai) {
+            <p class="text-xs text-emerald-600 font-semibold mt-2">✓ Semua tugas Obs/Waw selesai!</p>
+        }
+        @if (p.IsPermintaanData) {
+            <div class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                @* belum dipakai  *@
+                @* <span class="text-xs text-blue-500">📊</span> *@
+                @{
+                    var kdiSt = kdiTask.FirstOrDefault();
+                    string kdiLabel = kdiSt is null ? "Menunggu" : SubTaskStatus.GetLabel(kdiSt.StatusTask);
+                    string kdiColor = kdiSt?.StatusTask switch {
+                        SubTaskStatus.Selesai    => "text-emerald-600",
+                        SubTaskStatus.InProgress => "text-amber-600",
+                        SubTaskStatus.Dibatalkan => "text-red-500",
+                        _                        => "text-gray-500"
+                    };
+                }
+                @* belum dipakai *@
+                @* <p class="text-xs text-gray-500">
+                    Permintaan Data (KDI):
+                    <span class="font-semibold @kdiColor">@kdiLabel</span>
+                    — <a href="/kasubkel-kdi/subtasks/@p.PermohonanPPIDID"
+                         class="text-blue-600 hover:underline">Lihat di KDI →</a>
+                </p> *@
+            </div>
+        }
+    </div>
+
+    <!-- Sub-task Cards Obs/Waw -->
+    <div class="grid grid-cols-1 @(Model.TotalTasks == 2 ? "md:grid-cols-2" : "") gap-4 mb-4">
+
+        @if (!Model.SubTasks.Any())
+        {
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                <div class="text-3xl mb-2">📋</div>
+                <p class="text-gray-500 text-sm font-medium">Sub-tugas Obs/Waw belum tersedia.</p>
+                <p class="text-gray-400 text-xs mt-1 leading-relaxed">
+                    Sub-tugas dibuat otomatis saat Kasubkel Kepegawaian menerbitkan Surat Izin.
+                    Hubungi Kasubkel jika surat izin sudah diterbitkan namun sub-tugas belum muncul.
+                </p>
+            </div>
+        }
+
+        @foreach (var st in Model.SubTasks)
+        {
+            string jenis    = st.JenisTask;
+            string jenisLbl = JenisTask.GetLabel(jenis);
+            string icon     = JenisTask.GetIcon(jenis);
+            bool   inProg   = st.IsInProgress;
+            bool   baru     = IsRecentlyUpdated(st);
+
+            string cardBorder = st.IsSelesai           ? "border-emerald-200" :
+                                st.IsDibatalkan        ? "border-red-200"     :
+                                st.IsWaitingKonfirmasi ? "border-blue-300"    :
+                                st.IsInProgress        ? "border-amber-200"   : "border-gray-200";
+
+            string badgeBg = st.StatusTask switch
+            {
+                SubTaskStatus.Selesai           => "bg-emerald-100 text-emerald-800",
+                SubTaskStatus.InProgress        => "bg-amber-100 text-amber-800",
+                SubTaskStatus.Dibatalkan        => "bg-red-100 text-red-700",
+                SubTaskStatus.WaitingKonfirmasi => "bg-blue-100 text-blue-800",
+                _                               => "bg-gray-100 text-gray-500"
+            };
+
+            string jadwalUrl = jenis == JenisTask.Observasi
+                ? $"/petugas-loket/jadwal-observasi/{p.PermohonanPPIDID}"
+                : $"/petugas-loket/jadwal-wawancara/{p.PermohonanPPIDID}";
+
+            string selesaiUrl = jenis == JenisTask.Observasi
+                ? $"/petugas-loket/selesai-observasi/{p.PermohonanPPIDID}"
+                : $"/petugas-loket/selesai-wawancara/{p.PermohonanPPIDID}";
+
+            string actionUrl = inProg ? selesaiUrl : jadwalUrl;
+
+            <div class="bg-white rounded-2xl border @cardBorder shadow-sm p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-2xl">@icon</span>
+                        <p class="font-bold text-gray-800 text-sm">@jenisLbl</p>
+                    </div>
+                    <div class="flex flex-wrap gap-1 justify-end">
+                        @if (baru && !st.IsSelesai && !st.IsDibatalkan)
+                        { <span class="text-[10px] bg-green-100 text-green-700 border border-green-200 px-1.5 py-0.5 rounded-full font-bold">BARU</span> }
+                        @if (st.RescheduleCount > 0)
+                        { <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold">🔄 Reschedule @st.RescheduleCount×</span> }
+                        <span class="text-[11px] @badgeBg px-2.5 py-0.5 rounded-full font-semibold">
+                            @SubTaskStatus.GetLabel(st.StatusTask)
+                        </span>
+                    </div>
+                </div>
+
+                @if (st.TanggalJadwal.HasValue)
+                {
+                    <div class="bg-gray-50 rounded-xl p-3 mb-3">
+                        <p class="text-xs text-gray-500">
+                            📅 <strong>@st.TanggalJadwal.Value.ToString("dd MMM yyyy")</strong>
+                            pukul @(st.WaktuJadwal?.ToString("HH:mm") ?? "—") WIB
+                        </p>
+                        @if (!string.IsNullOrEmpty(st.LokasiJenis))
+                        {
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                @(st.LokasiJenis == "Online" ? "🌐 Online" : "📍 Offline")
+                                @if (!string.IsNullOrEmpty(st.LokasiDetail)) { <span>— <strong>@st.LokasiDetail</strong></span> }
+                            </p>
+                        }
+                        @if (!string.IsNullOrEmpty(st.NamaPIC))
+                        {
+                            <p class="text-xs text-gray-500 mt-0.5">PIC: <strong>@st.NamaPIC</strong></p>
+                        }
+                        @if (!string.IsNullOrEmpty(st.TeleponPIC))
+                        {
+                            <a href="tel:@st.TeleponPIC" class="text-xs text-blue-500 hover:underline">📞 @st.TeleponPIC</a>
+                        }
+                    </div>
+                }
+
+                @if (st.HasFile)
+                {
+                    <div class="bg-emerald-50 rounded-xl p-3 mb-3">
+                        <p class="text-xs text-emerald-700">📎 @(st.NamaFile ?? "File tersedia")</p>
+                        @if (!string.IsNullOrEmpty(st.FilePath))
+                        {
+                            <div class="flex items-center gap-2.5 mt-0.5">
+                           <button type="button"
+                                   onclick="previewFile('@st.FilePath','@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(st.NamaFile ?? "File"))')"
+                                   class="text-xs text-violet-500 hover:text-violet-700 font-medium hover:underline transition-colors">
+                               👁 Lihat
+                           </button>
+                           <span class="text-gray-300 select-none">|</span>
+                           <a href="@st.FilePath" target="_blank"
+                              class="text-xs text-blue-500 hover:text-blue-700 font-medium hover:underline transition-colors">
+                               ⬇ Unduh
+                           </a>
+                       </div>
+
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(st.Catatan))
+                {
+                    <p class="text-xs text-gray-500 mb-3 italic leading-relaxed">Catatan dari Pemohon: @st.Catatan</p>
+                }
+
+                @if (!string.IsNullOrEmpty(st.ReopenAlasan))
+                {
+                    <div class="bg-violet-50 border border-violet-100 rounded-xl p-2.5 mb-2">
+                        <p class="text-[11px] text-violet-600">↩ Di-reopen: @st.ReopenAlasan</p>
+                    </div>
+                }
+
+                @* ── TOMBOL AKSI ── *@
+                @if (st.IsDibatalkan)
+                {
+                    <div class="bg-red-50 border border-red-100 rounded-xl p-2.5 mb-2">
+                        <p class="text-[11px] text-red-600 font-medium">🚫 Dibatalkan: @(st.BatalAlasan ?? "—")</p>
+                    </div>
+                    <a href="/petugas-loket/reopen-subtask/@p.PermohonanPPIDID/@st.JenisTask"
+                       class="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+                        ↩ Buka Kembali
+                    </a>
+                }
+                else if (st.IsWaitingKonfirmasi)
+                {
+                    @* Pemohon sudah unggah dokumentasi — Loket perlu konfirmasi selesai *@
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                        <div class="flex items-start gap-2">
+                            <span class="text-blue-500 flex-shrink-0">📤</span>
+                            <div>
+                                <p class="text-[11px] font-bold text-blue-800">
+                                    Pemohon sudah mengunggah dokumentasi
+                                </p>
+                                <p class="text-[11px] text-blue-600 mt-0.5 leading-relaxed">
+                                    Konfirmasi bahwa @JenisTask.GetLabel(st.JenisTask) telah
+                                    benar-benar dilaksanakan, lalu klik tombol di bawah.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                        string konfirmasiUrl = st.JenisTask == JenisTask.Observasi
+                            ? $"/petugas-loket/selesai-observasi/{p.PermohonanPPIDID}"
+                            : $"/petugas-loket/selesai-wawancara/{p.PermohonanPPIDID}";
+
+                    <div class="flex flex-col gap-1.5">
+                        <a href="@konfirmasiUrl"
+                           class="w-full flex items-center justify-center gap-2
+                                  bg-emerald-600 hover:bg-emerald-700 text-white
+                                  text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+                            ✓ Konfirmasi @JenisTask.GetLabel(st.JenisTask) Selesai →
+                        </a>
+                        <a href="/petugas-loket/batal-subtask/@p.PermohonanPPIDID/@st.JenisTask"
+                           class="w-full text-center bg-red-50 hover:bg-red-100 border border-red-100
+                                  text-red-600 text-[11px] font-semibold px-2 py-1.5
+                                  rounded-lg transition-colors">
+                            🚫 Batalkan
+                        </a>
+                    </div>
+                }
+                else if (!st.IsSelesai)
+                {
+                    <div class="flex flex-col gap-1.5">
+                        <a href="@actionUrl"
+                           class="w-full flex items-center justify-center gap-2 @(inProg ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#002d7a] hover:bg-blue-900") text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+                            @(st.IsPending ? $"📅 Buat Jadwal {jenisLbl} →" : $"✓ Konfirmasi {jenisLbl} Selesai →")
+                        </a>
+                        <div class="flex gap-1.5">
+                            @if (inProg)
+                            {
+                                <a href="/petugas-loket/reschedule/@p.PermohonanPPIDID/@st.JenisTask"
+                                   class="flex-1 text-center bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-[11px] font-semibold px-2 py-1.5 rounded-lg transition-colors">
+                                    📅 Reschedule
+                                </a>
+                                <a href="/petugas-loket/update-pic/@p.PermohonanPPIDID/@st.JenisTask"
+                                   class="flex-1 text-center bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-[11px] font-semibold px-2 py-1.5 rounded-lg transition-colors">
+                                    👤 Ganti PIC
+                                </a>
+                            }
+                            <a href="/petugas-loket/batal-subtask/@p.PermohonanPPIDID/@st.JenisTask"
+                               class="flex-1 text-center bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 text-[11px] font-semibold px-2 py-1.5 rounded-lg transition-colors">
+                                🚫 Batalkan
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+            {
+
+        bool reopenWillRollback = p.StatusPPIDID == StatusId.DataSiap
+                               || p.StatusPPIDID == StatusId.FeedbackPemohon
+                               || p.StatusPPIDID == StatusId.Selesai;
+
+                               @* ── Badge: laporan + feedback pemohon sudah masuk ── *@
+                    @if (tugasDocs.Any())
+                    {
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg
+                                    px-3 py-2 mb-2 flex items-center gap-2">
+                            <span class="text-indigo-500 flex-shrink-0">📋</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[11px] font-bold text-indigo-800">
+                                    Hasil Laporan pemohon sudah diunggah
+                                </p>
+                                <p class="text-[10px] text-indigo-500 mt-0.5">
+                                    @tugasDocs.Count file ·
+                                    @tugasDocs.First().CreatedAt?.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                                </p>
+                            </div>
+                            <span class="flex-shrink-0 text-[10px] bg-indigo-100 text-indigo-700
+                                         font-bold px-2 py-0.5 rounded-full">✓</span>
+                        </div>
+                    }
+
+
+    <div class="space-y-2">
+        <div class="flex items-center justify-between">
+            <div class="text-emerald-600 text-xs font-semibold">
+                ✓ Selesai @st.SelesaiAt?.ToLocalTime().ToString("dd MMM HH:mm")
+            </div>
+            <a href="/petugas-loket/reopen-subtask/@p.PermohonanPPIDID/@st.JenisTask"
+               title="@(reopenWillRollback ? "⚠ Akan memundurkan status ke Sedang Diproses" : "Buka kembali sub-tugas ini")"
+               class="inline-flex items-center gap-1 text-[11px] bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-600 px-2 py-1 rounded-lg font-medium transition-colors">
+                ↩ Reopen
+                @if (reopenWillRollback)
+                {
+                    <span class="text-amber-500 text-[10px]">⚠</span>
+                }
+            </a>
+        </div>
+        @if (reopenWillRollback)
+        {
+            <div class="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+                <span class="text-amber-500 flex-shrink-0 text-xs mt-0.5">⚠</span>
+                <p class="text-[10px] text-amber-700 leading-relaxed">
+                    <strong>Perhatian:</strong> Mereopen sub-tugas yang sudah berkontribusi pada status
+                    permohonan dapat memundurkan status kembali ke <strong>Sedang Diproses</strong>.
+                    Konfirmasi diperlukan di halaman berikutnya.
+                </p>
+            </div>
+        }
+    </div>
+}
+            </div>
+        }
+    </div>
+
+    @* Panel status feedback *@
+@if (Model.SubTasks.Any(t => t.IsSelesai))
+{
+    var feedbackMap2 = ViewData["FeedbackMap"] as Dictionary<string, bool> ?? new();
+    bool fbAda = feedbackMap2.ContainsKey(JenisTask.Semua) && feedbackMap2[JenisTask.Semua];
+
+    <div class="bg-white rounded-2xl border @(fbAda ? "border-emerald-200" : "border-gray-100") shadow-sm p-5 mb-4">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <span class="text-base">📋</span>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Feedback Pemohon</p>
+                @if (fbAda)
+                {
+                    <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Diterima</span>
+                }
+            </div>
+            <a href="/petugas-loket/feedback/@p.PermohonanPPIDID"
+               class="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                Lihat Detail →
+            </a>
+        </div>
+
+        @if (fbAda)
+        {
+            <p class="text-xs text-emerald-600 font-semibold">Feedback sudah diterima. Permohonan siap diselesaikan.</p>
+        }
+        else
+        {
+            <p class="text-xs text-gray-400 leading-relaxed">
+                Feedback aktif otomatis di portal pemohon sejak status Data Siap.
+                Ingatkan pemohon menggunakan nomor <span class="font-mono font-bold text-gray-600">@p.NoPermohonan</span>.
+            </p>
+        }
+    </div>
+}
+
+    <!-- Hasil Laporan Pemohon -->
+    @if (tugasDocs.Any())
+    {
+        <div class="bg-white rounded-2xl border border-indigo-100 shadow-sm p-5 mb-4">
+            <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-3">
+                Hasil Laporan Pemohon (@tugasDocs.Count)
+            </p>
+            <div class="space-y-2">
+                @foreach (var f in tugasDocs)
+                {
+                    <div class="flex items-center gap-2.5 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
+                        <span class="text-indigo-500 flex-shrink-0">📎</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-indigo-800 truncate">@f.NamaDokumenPPID</p>
+                            <p class="text-[10px] text-indigo-400">@f.CreatedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                           <button type="button"
+                                   onclick="previewFile('@f.UploadDokumenPPID','@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(f.NamaDokumenPPID))')"
+                                   class="text-[11px] bg-violet-100 hover:bg-violet-200 text-violet-700 px-2 py-1 rounded-lg font-medium transition-colors">
+                               👁 Lihat
+                           </button>
+                           <a href="@f.UploadDokumenPPID" target="_blank"
+                              class="text-[11px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg font-medium transition-colors">
+                               ⬇ Unduh
+                           </a>
+                       </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Selesai Badge -->
+    @if (isSelesai)
+    {
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 mb-4 flex items-center gap-4">
+            <div class="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center text-white text-2xl flex-shrink-0">🏁</div>
+            <div>
+                <p class="font-bold text-emerald-800">Permohonan Selesai</p>
+                <p class="text-emerald-600 text-sm mt-0.5">
+                    Tanggal selesai: <strong>@(p.TanggalSelesai?.ToString("dd MMMM yyyy") ?? "—")</strong>
+                </p>
+            </div>
+        </div>
+    }
+
+@{
+    bool isDataSiapLoket  = current == StatusId.DataSiap;
+    bool isFeedbackLoket  = current == StatusId.FeedbackPemohon;
+    bool canForceCloseLoket = isDataSiapLoket || isFeedbackLoket;
+}
+
+@if (!isSelesai && (isDataSiapLoket || isFeedbackLoket))
+{
+    <div id="panel-selesai"
+         class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 scroll-mt-4">
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Status Laporan</p>
+
+        @if (isDataSiapLoket)
+        {
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-3">
+                <div class="flex items-start gap-3">
+                    <span class="text-xl flex-shrink-0">✅</span>
+                    <div>
+                        <p class="font-bold text-emerald-800 text-sm">Semua data siap</p>
+                        <p class="text-emerald-700 text-xs mt-1 leading-relaxed">
+                            Pemohon dapat mengunduh <strong>template laporan</strong> dan <strong>mengunggah laporan hasil</strong>
+                            melalui portal publik menggunakan nomor
+                            <span class="font-mono font-bold">@p.NoPermohonan</span>.
+                            Setelah unggah laporan, pemohon akan otomatis diarahkan ke form feedback.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="pt-3 border-t border-gray-100">
+            @{
+                bool adaLaporanCheck = tugasDocs.Any();
+            }
+            @if (adaLaporanCheck)
+            {
+            @if (isFeedbackLoket)
+            {
+                @* Laporan + feedback sudah masuk dari pemohon → aksi UTAMA *@
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3
+                            flex items-start gap-2.5">
+                    <span class="text-emerald-500 flex-shrink-0 mt-0.5">📋</span>
+                    <div>
+                        <p class="text-xs font-bold text-emerald-800">
+                            Laporan & feedback pemohon sudah diterima
+                        </p>
+                        <p class="text-xs text-emerald-700 mt-0.5 leading-relaxed">
+                            Klik konfirmasi untuk menutup permohonan ini secara resmi.
+                        </p>
+                    </div>
+                </div>
+                <form asp-action="TandaiSelesaiFeedback" asp-controller="PetugasLoket"
+                      method="post"
+                      onsubmit="return confirm('Konfirmasi selesai? Laporan & feedback pemohon sudah ada.')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="permohonanId" value="@p.PermohonanPPIDID" />
+                    <input type="hidden" name="forceOverride" value="false" />
+                    <button type="submit"
+                            class="w-full flex items-center justify-center gap-2
+                                   bg-emerald-600 hover:bg-emerald-700 text-white
+                                   text-sm font-bold px-4 py-3 rounded-xl
+                                   transition-colors shadow-sm">
+                        ✓ Konfirmasi Permohonan Selesai →
+                    </button>
+                </form>
+            }
+            else
+            {
+                <p class="text-xs text-gray-400 mb-2">
+                    Jika pemohon tidak merespons dalam waktu wajar:
+                </p>
+                <form asp-action="TandaiSelesaiFeedback" asp-controller="PetugasLoket"
+                      method="post"
+                      onsubmit="return confirm('Tandai selesai manual? Laporan pemohon sudah ada.')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="permohonanId" value="@p.PermohonanPPIDID" />
+                    <input type="hidden" name="forceOverride" value="false" />
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 border border-gray-300
+                                   text-gray-600 text-xs font-semibold px-4 py-2
+                                   rounded-xl hover:bg-gray-50 transition-colors">
+                        ✓ Tandai Selesai (Manual)
+                    </button>
+                </form>
+            }
+        }
+            else
+            {
+                <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                    <div class="flex items-start gap-2">
+                        <span class="text-red-500 flex-shrink-0">⛔</span>
+                        <div>
+                            <p class="text-xs font-bold text-red-800">Laporan Pemohon Belum Ada</p>
+                            <p class="text-xs text-red-600 mt-0.5 leading-relaxed">
+                                Ingatkan pemohon (<span class="font-mono font-bold">@p.NoPermohonan</span>)
+                                untuk mengakses portal publik dan mengunggah laporan hasil penelitian.
+                                Setelah laporan diunggah, tombol selesai normal akan tersedia.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-red-400 mb-2 font-semibold">⚠ Override darurat — hanya jika ada persetujuan atasan:</p>
+                <form asp-action="TandaiSelesaiFeedback" asp-controller="PetugasLoket" method="post"
+                      onsubmit="return confirm('PERINGATAN: Laporan pemohon BELUM ADA.\n\nTindakan ini akan tercatat di audit log.\nLanjutkan hanya jika sudah mendapat persetujuan atasan.\n\nTetap selesaikan?')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="permohonanId" value="@p.PermohonanPPIDID" />
+                    <input type="hidden" name="forceOverride" value="true" />
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 bg-red-50 hover:bg-red-100 border-2 border-red-300
+                                   text-red-700 text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+                        ⚠ Selesaikan Darurat (tanpa laporan)
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+}
+
+    <!-- Info Permohonan -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Info Permohonan</p>
+        <dl class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div><dt class="text-[10px] text-gray-400 uppercase font-semibold">Pemohon</dt><dd class="text-sm font-semibold text-gray-800">@pr?.Nama</dd></div>
+            <div><dt class="text-[10px] text-gray-400 uppercase font-semibold">NIK</dt><dd class="font-mono text-sm text-gray-700">@pr?.NIK</dd></div>
+            @if (!string.IsNullOrEmpty(ppid?.Lembaga)) {
+                <div><dt class="text-[10px] text-gray-400 uppercase font-semibold">Lembaga</dt><dd class="text-sm text-gray-700">@ppid.Lembaga</dd></div>
+            }
+            <div>
+                <dt class="text-[10px] text-gray-400 uppercase font-semibold mb-1">Keperluan</dt>
+                <dd class="flex flex-wrap gap-1">
+                    @if (p.IsPermintaanData) { <span class="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full border border-blue-100">Data (KDI)</span> }
+                    @if (p.IsObservasi)      { <span class="bg-orange-50 text-orange-700 text-xs px-2 py-0.5 rounded-full border border-orange-100">Observasi</span> }
+                    @if (p.IsWawancara)      { <span class="bg-violet-50 text-violet-700 text-xs px-2 py-0.5 rounded-full border border-violet-100">Wawancara</span> }
+                </dd>
+            </div>
+            @if (!string.IsNullOrEmpty(p.Pengampu)) {
+                <div>
+                    <dt class="text-[10px] text-gray-400 uppercase font-semibold">Pengampu</dt>
+                    <dd class="text-sm text-gray-700">
+                        @p.Pengampu
+                        @if (!string.IsNullOrEmpty(p.TeleponPengampu)) {
+                            <a href="tel:@p.TeleponPengampu" class="ml-2 text-blue-500 text-xs hover:underline">📞 @p.TeleponPengampu</a>
+                        }
+                    </dd>
+                </div>
+            }
+            <div>
+                <dt class="text-[10px] text-gray-400 uppercase font-semibold">Batas Waktu</dt>
+                <dd class="text-sm @(p.IsOverdue ? "text-red-600 font-semibold" : "text-gray-700")">
+                    @(p.BatasWaktu?.ToString("dd MMM yyyy") ?? "—") @(p.IsOverdue ? " ⚠" : "")
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+        <a href="/petugas-loket/detail/@p.PermohonanPPIDID"
+           class="inline-flex items-center gap-2 border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+            📋 Lihat Detail & Audit Log
+        </a>
+        @if (isDataSiap || isFeedback || isSelesai)
+{
+
+        var fbMapNav  = ViewData["FeedbackMap"] as Dictionary<string, bool> ?? new();
+bool fbAdaNav = fbMapNav.ContainsKey(JenisTask.Semua) && fbMapNav[JenisTask.Semua];
+string fbBadge = fbAdaNav ? "(✓)" : "";
+
+    <a href="/petugas-loket/feedback/@p.PermohonanPPIDID"
+       class="inline-flex items-center gap-2 @(fbAdaNav ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100" : "border border-gray-200 text-gray-600 hover:bg-gray-50") text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+        📋 Hasil Feedback Pemohon @fbBadge
+    </a>
+}
+    </div>
+</div>
+<partial name="Partials/_DocViewerModal" />
